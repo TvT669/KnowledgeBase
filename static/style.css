@@ -1,0 +1,93 @@
+:root {
+  --bg: #f3efe8;
+  --paper: #fffdf8;
+  --ink: #1d1b16;
+  --muted: #655f54;
+  --accent: #c9572a;
+  --line: #d8cfc0;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "LXGW WenKai", "Hiragino Sans GB", sans-serif;
+  color: var(--ink);
+  background:
+    radial-gradient(circle at 15% 10%, #f8d8c8 0, transparent 40%),
+    radial-gradient(circle at 85% 15%, #e8e2d1 0, transparent 45%),
+    var(--bg);
+}
+
+.page {
+  max-width: 920px;
+  margin: 2rem auto;
+  padding: 0 1rem 3rem;
+}
+
+.hero h1 {
+  margin: 0;
+  font-size: clamp(1.8rem, 4vw, 3rem);
+}
+
+.hero p {
+  margin-top: 0.5rem;
+  color: var(--muted);
+}
+
+.search-box {
+  display: flex;
+  gap: 0.5rem;
+  margin: 1.2rem 0 1.6rem;
+}
+
+input {
+  flex: 1;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 0.7rem 0.8rem;
+  background: var(--paper);
+}
+
+button {
+  border: 0;
+  border-radius: 12px;
+  padding: 0.7rem 1rem;
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+}
+
+.list {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.card {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--paper);
+  padding: 0.9rem;
+}
+
+.card header {
+  display: flex;
+  justify-content: space-between;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.summary {
+  margin: 0.6rem 0;
+  line-height: 1.5;
+}
+
+pre {
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: #f7f2ea;
+  padding: 0.7rem;
+  border-radius: 10px;
+}

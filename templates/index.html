@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>本地 AI 知识库</title>
+    <link rel="stylesheet" href="/static/style.css" />
+  </head>
+  <body>
+    <main class="page">
+      <section class="hero">
+        <h1>本地 AI 知识库</h1>
+        <p>统一沉淀多 IDE/终端对话，支持检索与摘要。</p>
+      </section>
+
+      <section class="search-box">
+        <input id="q" placeholder="输入关键词，例如：幂等、重试、索引" />
+        <button id="searchBtn">搜索</button>
+      </section>
+
+      <section>
+        <h2>最近记录</h2>
+        <div id="results" class="list">
+          {% for item in items %}
+          <article class="card">
+            <header>
+              <span>{{ item.source }}</span>
+              <time>{{ item.created_at }}</time>
+            </header>
+            <p class="summary">{{ item.summary or '（暂无摘要）' }}</p>
+            <details>
+              <summary>展开原文</summary>
+              <pre>{{ item.content }}</pre>
+            </details>
+          </article>
+          {% endfor %}
+        </div>
+      </section>
+    </main>
+
+    <script>
+      async function search() {
+        const q = document.getElementById('q').value.trim();
+        if (!q) return;
+        const resp = await fetch('/api/search', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ q, limit: 20 })
+        });
+        const data = await resp.json();
+        const box = document.getElementById('results');
+        box.innerHTML = '';
+
+        (data.items || []).forEach((item) => {
+          const el = document.createElement('article');
+          el.className = 'card';
+          el.innerHTML = `
+            <header><span>${item.source}</span><time>${item.created_at}</time></header>
+            <p class="summary">${item.summary || '（暂无摘要）'}</p>
+            <details><summary>展开原文</summary><pre>${item.content}</pre></details>
+          `;
+          box.appendChild(el);
+        });
+      }
+
+      document.getElementById('searchBtn').addEventListener('click', search);
+      document.getElementById('q').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') search();
+      });
+    </script>
+  </body>
+</html>
