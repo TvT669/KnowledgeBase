@@ -15,6 +15,36 @@ class SearchQuery(BaseModel):
     limit: int = Field(default=10, ge=1, le=100)
 
 
+class NoteDraftRequest(BaseModel):
+    message_ids: list[int] = Field(..., min_length=1, max_length=200)
+
+
+class SessionNoteDraftRequest(BaseModel):
+    source: str = Field(..., min_length=1)
+    session_id: str = Field(..., min_length=1)
+
+
+class CreateNoteRequest(BaseModel):
+    title: str = Field(..., min_length=1, max_length=120)
+    problem: str = Field(..., min_length=1)
+    root_cause: str = Field(..., min_length=1)
+    solution: str = Field(..., min_length=1)
+    key_takeaways: str = Field(..., min_length=1)
+    message_ids: list[int] = Field(..., min_length=1, max_length=200)
+    status: str = Field(default="draft")
+    source_type: str = Field(default="mixed")
+
+
+class UpdateNoteRequest(BaseModel):
+    title: str = Field(..., min_length=1, max_length=120)
+    problem: str = Field(..., min_length=1)
+    root_cause: str = Field(..., min_length=1)
+    solution: str = Field(..., min_length=1)
+    key_takeaways: str = Field(..., min_length=1)
+    status: str = Field(default="draft")
+    source_type: str = Field(default="mixed")
+
+
 class MessageOut(BaseModel):
     id: int
     source: str
@@ -23,3 +53,18 @@ class MessageOut(BaseModel):
     content: str
     created_at: str
     summary: str | None
+
+
+class NoteOut(BaseModel):
+    id: int
+    title: str
+    problem: str
+    root_cause: str
+    solution: str
+    key_takeaways: str
+    status: str
+    source_type: str
+    created_at: str
+    updated_at: str
+    source_count: int
+    source_labels: list[str]

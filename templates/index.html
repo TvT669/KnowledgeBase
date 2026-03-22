@@ -7,66 +7,546 @@
     <link rel="stylesheet" href="/static/style.css" />
   </head>
   <body>
-    <main class="page">
-      <section class="hero">
-        <h1>本地 AI 知识库</h1>
-        <p>统一沉淀多 IDE/终端对话，支持检索与摘要。</p>
-      </section>
-
-      <section class="search-box">
-        <input id="q" placeholder="输入关键词，例如：幂等、重试、索引" />
-        <button id="searchBtn">搜索</button>
-      </section>
-
-      <section>
-        <h2>最近记录</h2>
-        <div id="results" class="list">
-          {% for item in items %}
-          <article class="card">
-            <header>
-              <span>{{ item.source }}</span>
-              <time>{{ item.created_at }}</time>
-            </header>
-            <p class="summary">{{ item.summary or '（暂无摘要）' }}</p>
-            <details>
-              <summary>展开原文</summary>
-              <pre>{{ item.content }}</pre>
-            </details>
-          </article>
-          {% endfor %}
+    <main class="page page-home">
+      <section class="hero hero-home">
+        <div class="hero-copy">
+          <p class="eyebrow">本地知识库</p>
+          <h1>把 AI 对话整理成可复用的知识笔记</h1>
+          <p class="hero-text">
+            先选择素材，再生成草稿并手动收敛结论。首页只保留整理工作台，避免在多个区块之间来回跳。
+          </p>
         </div>
+        <div class="hero-actions">
+          <a class="ghost-button" href="/notes">查看笔记库</a>
+        </div>
+      </section>
+
+      <section class="dashboard">
+        <section class="workspace-panel">
+          <header class="panel-header">
+            <div>
+              <p class="eyebrow">整理工作台</p>
+              <h2 id="workspaceTitle">按会话整理</h2>
+              <p id="workspaceHint" class="panel-text">
+                优先按完整 session 整理，通常更容易得到完整的问题、根因和方案。
+              </p>
+            </div>
+            <div class="panel-badge" id="workspaceCount">{{ sessions | length }} 个候选会话</div>
+          </header>
+
+          <div class="toolbar">
+            <div class="view-switch" role="tablist" aria-label="整理视图">
+              <button class="switch-btn is-active" type="button" data-view="sessions">按会话整理</button>
+              <button class="switch-btn" type="button" data-view="messages">按单条整理</button>
+            </div>
+
+            <div class="search-row">
+              <input id="searchInput" placeholder="搜索会话 ID、来源或摘要" />
+              <button id="searchBtn" type="button">搜索</button>
+              <button id="resetBtn" class="ghost-button" type="button">重置</button>
+            </div>
+          </div>
+
+          <div id="browserResults" class="browser-list" aria-live="polite"></div>
+        </section>
+
+        <aside class="side-panel">
+          <section class="compact-panel">
+            <header class="compact-header">
+              <div>
+                <p class="eyebrow">最近笔记</p>
+                <h2>最近沉淀的内容</h2>
+              </div>
+              <a class="muted-link" href="/notes">查看全部</a>
+            </header>
+
+            {% if recent_notes %}
+            <div class="compact-note-list">
+              {% for note in recent_notes %}
+              <article class="compact-note-card">
+                <header>
+                  <h3>{{ note.title }}</h3>
+                  <span class="pill">{{ note.status }}</span>
+                </header>
+                <p>{{ note.problem }}</p>
+                <div class="inline-meta">
+                  <span>{{ note.source_count }} 条来源</span>
+                  <span>{{ (note.source_labels | join(' / ')) or '未标记来源' }}</span>
+                </div>
+              </article>
+              {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-state compact">
+              <h3>还没有笔记</h3>
+              <p>从左边工作台点一次“整理”，就会开始形成你的第一批知识笔记。</p>
+            </div>
+            {% endif %}
+          </section>
+
+          <section class="compact-panel">
+            <header class="compact-header">
+              <div>
+                <p class="eyebrow">整理流程</p>
+                <h2>推荐的使用顺序</h2>
+              </div>
+            </header>
+            <div class="guide-list">
+              <p>1. 优先按会话整理，适合完整复盘一段讨论。</p>
+              <p>2. 只有一句关键建议时，再切到按单条整理。</p>
+              <p>3. 搜索只作用于当前视图，重置会恢复默认列表。</p>
+              <p>4. 保存后去笔记库查看结构化结果。</p>
+            </div>
+          </section>
+        </aside>
       </section>
     </main>
 
+    <section id="composerShell" class="composer-shell" hidden>
+      <div class="composer-backdrop" data-close-composer></div>
+      <section class="composer-panel composer-modal" aria-label="笔记整理面板">
+        <header class="composer-header">
+          <div>
+            <p class="eyebrow">笔记编辑器</p>
+            <h2>整理为知识笔记</h2>
+            <p class="panel-text">系统会先生成一版草稿，你可以直接修改后保存。</p>
+          </div>
+          <button id="closeComposerBtn" class="icon-button" type="button" aria-label="关闭">×</button>
+        </header>
+
+        <div class="composer-layout">
+          <section class="composer-sidebar">
+            <div class="source-summary">
+              <div class="inline-meta">
+                <span class="pill" id="composerModePill">单条消息</span>
+                <span id="composerSourceCount">0 条来源</span>
+              </div>
+              <p id="composerSourceMeta" class="source-meta">尚未选择来源消息</p>
+            </div>
+
+            <div class="source-preview">
+              <h3>来源预览</h3>
+              <div id="sourcePreviewList" class="source-list">
+                <p class="source-empty">选择素材后，这里会显示本次整理的对话片段。</p>
+              </div>
+            </div>
+          </section>
+
+          <form id="noteForm" class="note-form">
+            <label class="field">
+              <span>标题</span>
+              <input id="noteTitle" name="title" maxlength="120" required />
+            </label>
+
+            <label class="field">
+              <span>问题描述</span>
+              <textarea id="noteProblem" name="problem" rows="4" required></textarea>
+            </label>
+
+            <label class="field">
+              <span>根本原因</span>
+              <textarea id="noteRootCause" name="root_cause" rows="4" required></textarea>
+            </label>
+
+            <label class="field">
+              <span>解决方案</span>
+              <textarea id="noteSolution" name="solution" rows="4" required></textarea>
+            </label>
+
+            <label class="field">
+              <span>关键收获</span>
+              <textarea id="noteTakeaways" name="key_takeaways" rows="4" required></textarea>
+            </label>
+
+            <div class="form-actions">
+              <button id="regenDraftBtn" class="ghost-button" type="button">重新生成草稿</button>
+              <button id="saveNoteBtn" type="submit">保存笔记</button>
+            </div>
+
+            <p id="composerNotice" class="notice" aria-live="polite"></p>
+          </form>
+        </div>
+      </section>
+    </section>
+
     <script>
-      async function search() {
-        const q = document.getElementById('q').value.trim();
-        if (!q) return;
+      const initialMessages = {{ items | tojson }};
+      const initialSessions = {{ sessions | tojson }};
+      const state = {
+        view: 'sessions',
+        messages: [...initialMessages],
+        sessions: [...initialSessions],
+        activeDraftMode: null,
+        activeDraftPayload: null,
+        activeMessageIds: [],
+        activeSources: []
+      };
+
+      const browserResultsEl = document.getElementById('browserResults');
+      const workspaceTitleEl = document.getElementById('workspaceTitle');
+      const workspaceHintEl = document.getElementById('workspaceHint');
+      const workspaceCountEl = document.getElementById('workspaceCount');
+      const searchInputEl = document.getElementById('searchInput');
+      const composerShell = document.getElementById('composerShell');
+      const composerModePill = document.getElementById('composerModePill');
+      const composerSourceCount = document.getElementById('composerSourceCount');
+      const composerSourceMeta = document.getElementById('composerSourceMeta');
+      const sourcePreviewList = document.getElementById('sourcePreviewList');
+      const noteForm = document.getElementById('noteForm');
+      const noteTitle = document.getElementById('noteTitle');
+      const noteProblem = document.getElementById('noteProblem');
+      const noteRootCause = document.getElementById('noteRootCause');
+      const noteSolution = document.getElementById('noteSolution');
+      const noteTakeaways = document.getElementById('noteTakeaways');
+      const composerNotice = document.getElementById('composerNotice');
+      const regenDraftBtn = document.getElementById('regenDraftBtn');
+      const saveNoteBtn = document.getElementById('saveNoteBtn');
+
+      function escapeHtml(value) {
+        return String(value || '')
+          .replaceAll('&', '&amp;')
+          .replaceAll('<', '&lt;')
+          .replaceAll('>', '&gt;')
+          .replaceAll('"', '&quot;')
+          .replaceAll("'", '&#39;');
+      }
+
+      function clip(value, maxLength = 140) {
+        const text = String(value || '').trim();
+        return text.length > maxLength ? `${text.slice(0, maxLength)}...` : text;
+      }
+
+      function currentItems() {
+        return state.view === 'sessions' ? state.sessions : state.messages;
+      }
+
+      function updateWorkspaceMeta() {
+        if (state.view === 'sessions') {
+          workspaceTitleEl.textContent = '按会话整理';
+          workspaceHintEl.textContent = '优先按完整 session 整理，通常更容易得到完整的问题、根因和方案。';
+          workspaceCountEl.textContent = `${state.sessions.length} 个候选会话`;
+          searchInputEl.placeholder = '搜索会话 ID、来源或摘要';
+        } else {
+          workspaceTitleEl.textContent = '按单条整理';
+          workspaceHintEl.textContent = '当你只想沉淀一句关键建议或一个小结论时，再退回到单条消息。';
+          workspaceCountEl.textContent = `${state.messages.length} 条候选消息`;
+          searchInputEl.placeholder = '搜索消息内容、摘要或关键词';
+        }
+      }
+
+      function renderSessionCard(session) {
+        return `
+          <article class="browser-card session-browser-card">
+            <header class="browser-head">
+              <div>
+                <p class="browser-kicker">${escapeHtml(session.source)}</p>
+                <h3 class="browser-title">${escapeHtml(session.session_id)}</h3>
+              </div>
+              <span class="pill">${escapeHtml(session.message_count)} 条</span>
+            </header>
+            <p class="browser-text">${escapeHtml(session.latest_summary || '（暂无摘要）')}</p>
+            <footer class="browser-foot">
+              <span>${escapeHtml(session.latest_created_at || '')}</span>
+              <button
+                type="button"
+                class="secondary-btn open-session-note"
+                data-source="${escapeHtml(session.source)}"
+                data-session-id="${escapeHtml(session.session_id)}"
+              >
+                整理整个会话
+              </button>
+            </footer>
+          </article>
+        `;
+      }
+
+      function renderMessageCard(message) {
+        return `
+          <article class="browser-card message-browser-card">
+            <header class="browser-head">
+              <div>
+                <p class="browser-kicker">${escapeHtml(message.source)}${message.session_id ? ` / ${escapeHtml(message.session_id)}` : ''}</p>
+                <h3 class="browser-title">${escapeHtml(message.summary || clip(message.content, 28) || '未命名消息')}</h3>
+              </div>
+              <span>${escapeHtml(message.created_at)}</span>
+            </header>
+            <p class="browser-text">${escapeHtml(clip(message.content, 180))}</p>
+            <footer class="browser-foot">
+              <span>${message.session_id ? '适合只整理这条结论' : '无会话 ID，建议按单条整理'}</span>
+              <button
+                type="button"
+                class="secondary-btn open-message-note"
+                data-message-id="${message.id}"
+              >
+                整理这条消息
+              </button>
+            </footer>
+          </article>
+        `;
+      }
+
+      function renderWorkspace() {
+        updateWorkspaceMeta();
+        const items = currentItems();
+        if (!items.length) {
+          browserResultsEl.innerHTML = `
+            <div class="empty-state compact">
+              <h3>没有找到可整理的内容</h3>
+              <p>可以换个关键词，或者点“重置”恢复默认列表。</p>
+            </div>
+          `;
+          return;
+        }
+
+        browserResultsEl.innerHTML = items
+          .map((item) => state.view === 'sessions' ? renderSessionCard(item) : renderMessageCard(item))
+          .join('');
+      }
+
+      function restoreCurrentView() {
+        if (state.view === 'sessions') {
+          state.sessions = [...initialSessions];
+        } else {
+          state.messages = [...initialMessages];
+        }
+      }
+
+      function setNotice(message, type = '') {
+        composerNotice.textContent = message;
+        composerNotice.className = type ? `notice ${type}` : 'notice';
+      }
+
+      function fillDraft(draft) {
+        noteTitle.value = draft.title || '';
+        noteProblem.value = draft.problem || '';
+        noteRootCause.value = draft.root_cause || '';
+        noteSolution.value = draft.solution || '';
+        noteTakeaways.value = draft.key_takeaways || '';
+      }
+
+      function setBusy(isBusy) {
+        regenDraftBtn.disabled = isBusy;
+        saveNoteBtn.disabled = isBusy;
+      }
+
+      function renderSourcePreview() {
+        composerSourceCount.textContent = `${state.activeSources.length} 条来源`;
+        if (!state.activeSources.length) {
+          sourcePreviewList.innerHTML = '<p class="source-empty">选择素材后，这里会显示本次整理的对话片段。</p>';
+          return;
+        }
+
+        const preview = state.activeSources.slice(0, 4).map((item) => `
+          <article class="source-item">
+            <header>
+              <span class="source-badge">${escapeHtml(item.role)}</span>
+              <span>${escapeHtml(item.source)}${item.session_id ? ` / ${escapeHtml(item.session_id)}` : ''}</span>
+            </header>
+            <p>${escapeHtml(clip(item.content, 180))}</p>
+          </article>
+        `).join('');
+
+        const extra = state.activeSources.length > 4
+          ? `<p class="source-more">还有 ${state.activeSources.length - 4} 条来源未展开显示。</p>`
+          : '';
+
+        sourcePreviewList.innerHTML = preview + extra;
+      }
+
+      function openComposerBase(mode, payload, metaText) {
+        state.activeDraftMode = mode;
+        state.activeDraftPayload = payload;
+        state.activeMessageIds = mode === 'message' ? [...payload.message_ids] : [];
+        state.activeSources = [];
+        noteForm.reset();
+        composerModePill.textContent = mode === 'session' ? '整段会话' : '单条消息';
+        composerSourceMeta.textContent = metaText;
+        renderSourcePreview();
+        setNotice('');
+        composerShell.hidden = false;
+        document.body.classList.add('composer-open');
+      }
+
+      function openComposerForSession(source, sessionId) {
+        openComposerBase(
+          'session',
+          { source, session_id: sessionId },
+          `来源：${source} · 会话 ${sessionId}`
+        );
+        generateDraft();
+      }
+
+      function openComposerForMessage(messageId) {
+        const item = initialMessages.find((message) => message.id === messageId) || state.messages.find((message) => message.id === messageId);
+        if (!item) return;
+
+        openComposerBase(
+          'message',
+          { message_ids: [messageId] },
+          `来源：${item.source} · ${item.created_at} · 单条消息`
+        );
+        generateDraft();
+      }
+
+      function closeComposer() {
+        composerShell.hidden = true;
+        document.body.classList.remove('composer-open');
+        state.activeDraftMode = null;
+        state.activeDraftPayload = null;
+        state.activeMessageIds = [];
+        state.activeSources = [];
+        noteForm.reset();
+        renderSourcePreview();
+        setNotice('');
+      }
+
+      async function searchCurrentView() {
+        const q = searchInputEl.value.trim();
+        if (!q) {
+          restoreCurrentView();
+          renderWorkspace();
+          return;
+        }
+
+        if (state.view === 'sessions') {
+          const keyword = q.toLowerCase();
+          state.sessions = initialSessions.filter((session) =>
+            `${session.source} ${session.session_id} ${session.latest_summary || ''}`.toLowerCase().includes(keyword)
+          );
+          renderWorkspace();
+          return;
+        }
+
         const resp = await fetch('/api/search', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ q, limit: 20 })
+          body: JSON.stringify({ q, limit: 30 })
         });
         const data = await resp.json();
-        const box = document.getElementById('results');
-        box.innerHTML = '';
-
-        (data.items || []).forEach((item) => {
-          const el = document.createElement('article');
-          el.className = 'card';
-          el.innerHTML = `
-            <header><span>${item.source}</span><time>${item.created_at}</time></header>
-            <p class="summary">${item.summary || '（暂无摘要）'}</p>
-            <details><summary>展开原文</summary><pre>${item.content}</pre></details>
-          `;
-          box.appendChild(el);
-        });
+        state.messages = data.items || [];
+        renderWorkspace();
       }
 
-      document.getElementById('searchBtn').addEventListener('click', search);
-      document.getElementById('q').addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') search();
+      async function generateDraft() {
+        if (!state.activeDraftMode || !state.activeDraftPayload) return;
+
+        setBusy(true);
+        setNotice('正在生成结构化草稿...');
+
+        try {
+          const endpoint = state.activeDraftMode === 'session'
+            ? '/api/notes/generate/session'
+            : '/api/notes/generate';
+          const resp = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(state.activeDraftPayload)
+          });
+
+          if (!resp.ok) {
+            throw new Error(`生成失败: ${resp.status}`);
+          }
+
+          const data = await resp.json();
+          state.activeSources = data.sources || [];
+          state.activeMessageIds = state.activeSources.map((item) => item.id);
+          renderSourcePreview();
+          fillDraft(data.draft || {});
+          if (state.activeDraftMode === 'session') {
+            composerSourceMeta.textContent = `来源：${state.activeDraftPayload.source} · 会话 ${state.activeDraftPayload.session_id} · 已载入 ${state.activeMessageIds.length} 条消息`;
+          }
+          setNotice('草稿已生成，可以直接修改后保存。', 'success');
+        } catch (error) {
+          renderSourcePreview();
+          setNotice(error.message || '生成草稿失败，请稍后再试。', 'error');
+        } finally {
+          setBusy(false);
+        }
+      }
+
+      document.querySelectorAll('.switch-btn').forEach((button) => {
+        button.addEventListener('click', () => {
+          document.querySelectorAll('.switch-btn').forEach((btn) => btn.classList.remove('is-active'));
+          button.classList.add('is-active');
+          state.view = button.dataset.view;
+          searchInputEl.value = '';
+          restoreCurrentView();
+          renderWorkspace();
+        });
       });
+
+      document.getElementById('searchBtn').addEventListener('click', searchCurrentView);
+      document.getElementById('resetBtn').addEventListener('click', () => {
+        searchInputEl.value = '';
+        restoreCurrentView();
+        renderWorkspace();
+      });
+      searchInputEl.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+          searchCurrentView();
+        }
+      });
+
+      browserResultsEl.addEventListener('click', (event) => {
+        const sessionButton = event.target.closest('.open-session-note');
+        if (sessionButton) {
+          openComposerForSession(sessionButton.dataset.source, sessionButton.dataset.sessionId);
+          return;
+        }
+
+        const messageButton = event.target.closest('.open-message-note');
+        if (messageButton) {
+          openComposerForMessage(Number(messageButton.dataset.messageId));
+        }
+      });
+
+      document.getElementById('closeComposerBtn').addEventListener('click', closeComposer);
+      document.querySelector('[data-close-composer]').addEventListener('click', closeComposer);
+      regenDraftBtn.addEventListener('click', generateDraft);
+
+      noteForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        if (!state.activeMessageIds.length) {
+          setNotice('当前没有可保存的来源消息，请先生成草稿。', 'error');
+          return;
+        }
+
+        setBusy(true);
+        setNotice('正在保存笔记...');
+
+        try {
+          const payload = {
+            title: noteTitle.value.trim(),
+            problem: noteProblem.value.trim(),
+            root_cause: noteRootCause.value.trim(),
+            solution: noteSolution.value.trim(),
+            key_takeaways: noteTakeaways.value.trim(),
+            message_ids: state.activeMessageIds,
+            status: 'draft',
+            source_type: state.activeDraftMode === 'session' ? 'session' : 'mixed'
+          };
+          const resp = await fetch('/api/notes', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+
+          if (!resp.ok) {
+            throw new Error(`保存失败: ${resp.status}`);
+          }
+
+          setNotice('笔记已保存，正在跳转到笔记库。', 'success');
+          window.setTimeout(() => {
+            window.location.href = '/notes';
+          }, 500);
+        } catch (error) {
+          setNotice(error.message || '保存失败，请稍后再试。', 'error');
+        } finally {
+          setBusy(false);
+        }
+      });
+
+      renderWorkspace();
     </script>
   </body>
 </html>

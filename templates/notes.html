@@ -1,0 +1,398 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>知识笔记 | 本地 AI 知识库</title>
+    <link rel="stylesheet" href="/static/style.css" />
+  </head>
+  <body>
+    <main class="page page-wide">
+      <section class="hero hero-row">
+        <div>
+          <p class="eyebrow">知识笔记库</p>
+          <h1>搜索已经沉淀下来的结构化结论</h1>
+          <p>这里展示的是已经整理完成的笔记。你可以按关键词搜索，也可以回看每篇笔记的来源对话。</p>
+        </div>
+        <div class="hero-actions">
+          <a class="ghost-button" href="/">返回整理工作台</a>
+        </div>
+      </section>
+
+      <section class="workspace-panel">
+        <header class="panel-header">
+          <div>
+            <p class="eyebrow">笔记检索</p>
+            <h2>按关键词找回问题、根因和方案</h2>
+            <p class="panel-text">搜索会同时匹配标题、问题描述、根本原因、解决方案和关键收获。</p>
+          </div>
+          <div id="noteCount" class="panel-badge">{{ notes | length }} 篇笔记</div>
+        </header>
+
+        <div class="search-row note-search-row">
+          <input id="noteSearchInput" placeholder="搜索笔记关键词，例如：幂等、重试、补偿" />
+          <button id="noteSearchBtn" type="button">搜索笔记</button>
+          <button id="noteResetBtn" class="ghost-button" type="button">重置</button>
+        </div>
+
+        <div id="noteResults" class="note-grid note-grid-notes"></div>
+      </section>
+    </main>
+
+    <section id="editShell" class="composer-shell" hidden>
+      <div class="composer-backdrop" data-close-edit></div>
+      <section class="composer-panel source-modal" aria-label="编辑笔记">
+        <header class="composer-header">
+          <div>
+            <p class="eyebrow">笔记编辑</p>
+            <h2 id="editModalTitle">编辑知识笔记</h2>
+            <p class="panel-text">这里修改的是已保存的结构化内容，不会影响原始消息。</p>
+          </div>
+          <button id="closeEditBtn" class="icon-button ghost-button" type="button" aria-label="关闭">关闭</button>
+        </header>
+
+        <form id="editNoteForm" class="note-form note-form-standalone">
+          <label class="field">
+            <span>标题</span>
+            <input id="editTitle" name="title" maxlength="120" required />
+          </label>
+
+          <label class="field">
+            <span>状态</span>
+            <select id="editStatus" name="status">
+              <option value="draft">draft</option>
+              <option value="reviewed">reviewed</option>
+              <option value="published">published</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span>问题描述</span>
+            <textarea id="editProblem" name="problem" rows="4" required></textarea>
+          </label>
+
+          <label class="field">
+            <span>根本原因</span>
+            <textarea id="editRootCause" name="root_cause" rows="4" required></textarea>
+          </label>
+
+          <label class="field">
+            <span>解决方案</span>
+            <textarea id="editSolution" name="solution" rows="4" required></textarea>
+          </label>
+
+          <label class="field">
+            <span>关键收获</span>
+            <textarea id="editTakeaways" name="key_takeaways" rows="4" required></textarea>
+          </label>
+
+          <div class="form-actions">
+            <button id="saveEditBtn" type="submit">保存修改</button>
+          </div>
+
+          <p id="editNotice" class="notice" aria-live="polite"></p>
+        </form>
+      </section>
+    </section>
+
+    <section id="sourceShell" class="composer-shell" hidden>
+      <div class="composer-backdrop" data-close-sources></div>
+      <section class="composer-panel source-modal" aria-label="来源对话">
+        <header class="composer-header">
+          <div>
+            <p class="eyebrow">来源对话</p>
+            <h2 id="sourceModalTitle">查看来源消息</h2>
+            <p id="sourceModalHint" class="panel-text">这里会展示这篇笔记关联的原始消息。</p>
+          </div>
+          <button id="closeSourcesBtn" class="icon-button ghost-button" type="button" aria-label="关闭">关闭</button>
+        </header>
+
+        <div id="sourceModalList" class="source-list source-list-large">
+          <p class="source-empty">正在加载来源消息...</p>
+        </div>
+      </section>
+    </section>
+
+    <script>
+      const initialNotes = {{ notes | tojson }};
+      const noteStore = new Map(initialNotes.map((note) => [note.id, note]));
+      const noteResultsEl = document.getElementById('noteResults');
+      const noteSearchInput = document.getElementById('noteSearchInput');
+      const noteCount = document.getElementById('noteCount');
+      const editShell = document.getElementById('editShell');
+      const editModalTitle = document.getElementById('editModalTitle');
+      const editNoteForm = document.getElementById('editNoteForm');
+      const editTitle = document.getElementById('editTitle');
+      const editStatus = document.getElementById('editStatus');
+      const editProblem = document.getElementById('editProblem');
+      const editRootCause = document.getElementById('editRootCause');
+      const editSolution = document.getElementById('editSolution');
+      const editTakeaways = document.getElementById('editTakeaways');
+      const editNotice = document.getElementById('editNotice');
+      const saveEditBtn = document.getElementById('saveEditBtn');
+      const sourceShell = document.getElementById('sourceShell');
+      const sourceModalTitle = document.getElementById('sourceModalTitle');
+      const sourceModalHint = document.getElementById('sourceModalHint');
+      const sourceModalList = document.getElementById('sourceModalList');
+
+      let currentNotes = [...initialNotes];
+      let activeEditNoteId = null;
+
+      function escapeHtml(value) {
+        return String(value || '')
+          .replaceAll('&', '&amp;')
+          .replaceAll('<', '&lt;')
+          .replaceAll('>', '&gt;')
+          .replaceAll('"', '&quot;')
+          .replaceAll("'", '&#39;');
+      }
+
+      function renderNoteCard(note) {
+        const sourceLabels = (note.source_labels || []).join(' / ') || '未标记来源';
+        return `
+          <article class="note-card">
+            <header class="note-card-header">
+              <div>
+                <h2>${escapeHtml(note.title)}</h2>
+                <div class="inline-meta">
+                  <span>创建于 ${escapeHtml(note.created_at)}</span>
+                  <span>更新于 ${escapeHtml(note.updated_at)}</span>
+                  <span>${escapeHtml(note.source_count)} 条来源</span>
+                  <span>${escapeHtml(sourceLabels)}</span>
+                </div>
+              </div>
+              <span class="pill">${escapeHtml(note.status)}</span>
+            </header>
+
+            <section class="note-section">
+              <h3>问题描述</h3>
+              <p>${escapeHtml(note.problem)}</p>
+            </section>
+
+            <section class="note-section">
+              <h3>根本原因</h3>
+              <p>${escapeHtml(note.root_cause)}</p>
+            </section>
+
+            <section class="note-section">
+              <h3>解决方案</h3>
+              <p>${escapeHtml(note.solution)}</p>
+            </section>
+
+            <section class="note-section">
+              <h3>关键收获</h3>
+              <p>${escapeHtml(note.key_takeaways)}</p>
+            </section>
+
+            <footer class="browser-foot note-card-foot">
+              <span>${escapeHtml(note.source_type || 'mixed')}</span>
+              <div class="inline-actions">
+                <button type="button" class="ghost-button open-edit-note" data-note-id="${note.id}">
+                  编辑笔记
+                </button>
+                <button type="button" class="ghost-button open-note-sources" data-note-id="${note.id}" data-note-title="${escapeHtml(note.title)}">
+                  查看来源对话
+                </button>
+              </div>
+            </footer>
+          </article>
+        `;
+      }
+
+      function renderNotes(notes) {
+        noteCount.textContent = `${notes.length} 篇笔记`;
+        if (!notes.length) {
+          noteResultsEl.innerHTML = `
+            <section class="empty-state">
+              <h2>没有找到匹配笔记</h2>
+              <p>换一个关键词试试，或者点击“重置”查看全部笔记。</p>
+            </section>
+          `;
+          return;
+        }
+
+        noteResultsEl.innerHTML = notes.map(renderNoteCard).join('');
+      }
+
+      function openSourcesModal(title) {
+        sourceModalTitle.textContent = title || '查看来源消息';
+        sourceModalHint.textContent = '这里展示这篇笔记关联的原始消息。';
+        sourceModalList.innerHTML = '<p class="source-empty">正在加载来源消息...</p>';
+        sourceShell.hidden = false;
+        document.body.classList.add('composer-open');
+      }
+
+      function closeSourcesModal() {
+        sourceShell.hidden = true;
+        document.body.classList.remove('composer-open');
+      }
+
+      function setEditNotice(message, type = '') {
+        editNotice.textContent = message;
+        editNotice.className = type ? `notice ${type}` : 'notice';
+      }
+
+      function openEditModal(noteId) {
+        const note = noteStore.get(noteId);
+        if (!note) return;
+
+        activeEditNoteId = noteId;
+        editModalTitle.textContent = `编辑：${note.title}`;
+        editTitle.value = note.title || '';
+        editStatus.value = note.status || 'draft';
+        editProblem.value = note.problem || '';
+        editRootCause.value = note.root_cause || '';
+        editSolution.value = note.solution || '';
+        editTakeaways.value = note.key_takeaways || '';
+        setEditNotice('');
+        editShell.hidden = false;
+        document.body.classList.add('composer-open');
+      }
+
+      function closeEditModal() {
+        activeEditNoteId = null;
+        editNoteForm.reset();
+        setEditNotice('');
+        editShell.hidden = true;
+        document.body.classList.remove('composer-open');
+      }
+
+      function upsertNote(note) {
+        noteStore.set(note.id, note);
+        const initialIndex = initialNotes.findIndex((item) => item.id === note.id);
+        if (initialIndex !== -1) {
+          initialNotes.splice(initialIndex, 1, note);
+        }
+
+        const currentIndex = currentNotes.findIndex((item) => item.id === note.id);
+        if (currentIndex !== -1) {
+          currentNotes.splice(currentIndex, 1, note);
+        }
+      }
+
+      async function searchNotes() {
+        const q = noteSearchInput.value.trim();
+        if (!q) {
+          currentNotes = [...initialNotes];
+          renderNotes(currentNotes);
+          return;
+        }
+
+        const resp = await fetch('/api/notes/search', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ q, limit: 50 })
+        });
+        const data = await resp.json();
+        currentNotes = data.items || [];
+        renderNotes(currentNotes);
+      }
+
+      async function loadSources(noteId, title) {
+        openSourcesModal(title);
+
+        try {
+          const resp = await fetch(`/api/notes/${noteId}/sources`);
+          if (!resp.ok) {
+            throw new Error(`加载失败: ${resp.status}`);
+          }
+
+          const data = await resp.json();
+          const items = data.items || [];
+          sourceModalHint.textContent = `共关联 ${items.length} 条原始消息。`;
+
+          if (!items.length) {
+            sourceModalList.innerHTML = '<p class="source-empty">这篇笔记暂时没有关联到来源消息。</p>';
+            return;
+          }
+
+          sourceModalList.innerHTML = items.map((item) => `
+            <article class="source-item source-item-large">
+              <header>
+                <div class="inline-meta inline-meta-tight">
+                  <span class="source-badge">${escapeHtml(item.role)}</span>
+                  <span>${escapeHtml(item.source)}${item.session_id ? ` / ${escapeHtml(item.session_id)}` : ''}</span>
+                </div>
+                <span>${escapeHtml(item.created_at)}</span>
+              </header>
+              <p>${escapeHtml(item.content)}</p>
+            </article>
+          `).join('');
+        } catch (error) {
+          sourceModalHint.textContent = error.message || '加载来源消息失败，请稍后再试。';
+          sourceModalList.innerHTML = '<p class="source-empty">未能加载来源消息。</p>';
+        }
+      }
+
+      async function saveNoteEdit(event) {
+        event.preventDefault();
+        if (!activeEditNoteId) return;
+
+        saveEditBtn.disabled = true;
+        setEditNotice('正在保存修改...');
+
+        try {
+          const resp = await fetch(`/api/notes/${activeEditNoteId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              title: editTitle.value.trim(),
+              problem: editProblem.value.trim(),
+              root_cause: editRootCause.value.trim(),
+              solution: editSolution.value.trim(),
+              key_takeaways: editTakeaways.value.trim(),
+              status: editStatus.value,
+              source_type: noteStore.get(activeEditNoteId)?.source_type || 'mixed'
+            })
+          });
+
+          if (!resp.ok) {
+            throw new Error(`保存失败: ${resp.status}`);
+          }
+
+          const data = await resp.json();
+          upsertNote(data.note);
+          renderNotes(currentNotes);
+          setEditNotice('修改已保存。', 'success');
+          window.setTimeout(closeEditModal, 350);
+        } catch (error) {
+          setEditNotice(error.message || '保存修改失败，请稍后再试。', 'error');
+        } finally {
+          saveEditBtn.disabled = false;
+        }
+      }
+
+      document.getElementById('noteSearchBtn').addEventListener('click', searchNotes);
+      document.getElementById('noteResetBtn').addEventListener('click', () => {
+        noteSearchInput.value = '';
+        currentNotes = [...initialNotes];
+        renderNotes(currentNotes);
+      });
+      noteSearchInput.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+          searchNotes();
+        }
+      });
+
+      noteResultsEl.addEventListener('click', (event) => {
+        const editTrigger = event.target.closest('.open-edit-note');
+        if (editTrigger) {
+          openEditModal(Number(editTrigger.dataset.noteId));
+          return;
+        }
+
+        const trigger = event.target.closest('.open-note-sources');
+        if (!trigger) return;
+        loadSources(trigger.dataset.noteId, trigger.dataset.noteTitle);
+      });
+
+      document.getElementById('closeEditBtn').addEventListener('click', closeEditModal);
+      document.querySelector('[data-close-edit]').addEventListener('click', closeEditModal);
+      editNoteForm.addEventListener('submit', saveNoteEdit);
+      document.getElementById('closeSourcesBtn').addEventListener('click', closeSourcesModal);
+      document.querySelector('[data-close-sources]').addEventListener('click', closeSourcesModal);
+
+      renderNotes(currentNotes);
+    </script>
+  </body>
+</html>
