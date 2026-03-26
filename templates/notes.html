@@ -87,6 +87,7 @@
           </label>
 
           <div class="form-actions">
+            <button id="deleteEditBtn" class="danger-button" type="button">删除笔记</button>
             <button id="saveEditBtn" type="submit">保存修改</button>
           </div>
 
@@ -115,6 +116,8 @@
 
     <script>
       const initialNotes = {{ notes | tojson }};
+      const queryParams = new URLSearchParams(window.location.search);
+      const requestedNoteId = Number(queryParams.get('note_id') || 0);
       const noteStore = new Map(initialNotes.map((note) => [note.id, note]));
       const noteResultsEl = document.getElementById('noteResults');
       const noteSearchInput = document.getElementById('noteSearchInput');
@@ -129,6 +132,7 @@
       const editSolution = document.getElementById('editSolution');
       const editTakeaways = document.getElementById('editTakeaways');
       const editNotice = document.getElementById('editNotice');
+      const deleteEditBtn = document.getElementById('deleteEditBtn');
       const saveEditBtn = document.getElementById('saveEditBtn');
       const sourceShell = document.getElementById('sourceShell');
       const sourceModalTitle = document.getElementById('sourceModalTitle');
@@ -190,6 +194,9 @@
                 <button type="button" class="ghost-button open-edit-note" data-note-id="${note.id}">
                   编辑笔记
                 </button>
+                <button type="button" class="danger-button open-delete-note" data-note-id="${note.id}">
+                  删除笔记
+                </button>
                 <button type="button" class="ghost-button open-note-sources" data-note-id="${note.id}" data-note-title="${escapeHtml(note.title)}">
                   查看来源对话
                 </button>
@@ -249,6 +256,18 @@
         document.body.classList.add('composer-open');
       }
 
+      function openRequestedNoteIfNeeded() {
+        if (!requestedNoteId || !noteStore.has(requestedNoteId)) {
+          return;
+        }
+
+        openEditModal(requestedNoteId);
+        const note = noteStore.get(requestedNoteId);
+        if (note?.status === 'draft') {
+          setEditNotice('这是刚存下来的草稿，先把标题和关键收获修顺就够了。');
+        }
+      }
+
       function closeEditModal() {
         activeEditNoteId = null;
         editNoteForm.reset();
@@ -267,6 +286,20 @@
         const currentIndex = currentNotes.findIndex((item) => item.id === note.id);
         if (currentIndex !== -1) {
           currentNotes.splice(currentIndex, 1, note);
+        }
+      }
+
+      function removeNoteLocally(noteId) {
+        noteStore.delete(noteId);
+
+        const initialIndex = initialNotes.findIndex((item) => item.id === noteId);
+        if (initialIndex !== -1) {
+          initialNotes.splice(initialIndex, 1);
+        }
+
+        const currentIndex = currentNotes.findIndex((item) => item.id === noteId);
+        if (currentIndex !== -1) {
+          currentNotes.splice(currentIndex, 1);
         }
       }
 
@@ -362,6 +395,35 @@
         }
       }
 
+      async function deleteNote(noteId) {
+        const note = noteStore.get(noteId);
+        if (!note) return;
+
+        const confirmed = window.confirm(`确定删除笔记《${note.title}》吗？此操作不可撤销。`);
+        if (!confirmed) return;
+
+        try {
+          const resp = await fetch(`/api/notes/${noteId}`, {
+            method: 'DELETE'
+          });
+          if (!resp.ok) {
+            throw new Error(`删除失败: ${resp.status}`);
+          }
+
+          removeNoteLocally(noteId);
+          renderNotes(currentNotes);
+          if (activeEditNoteId === noteId) {
+            closeEditModal();
+          }
+        } catch (error) {
+          if (activeEditNoteId === noteId) {
+            setEditNotice(error.message || '删除失败，请稍后再试。', 'error');
+          } else {
+            window.alert(error.message || '删除失败，请稍后再试。');
+          }
+        }
+      }
+
       document.getElementById('noteSearchBtn').addEventListener('click', searchNotes);
       document.getElementById('noteResetBtn').addEventListener('click', () => {
         noteSearchInput.value = '';
@@ -381,6 +443,12 @@
           return;
         }
 
+        const deleteTrigger = event.target.closest('.open-delete-note');
+        if (deleteTrigger) {
+          deleteNote(Number(deleteTrigger.dataset.noteId));
+          return;
+        }
+
         const trigger = event.target.closest('.open-note-sources');
         if (!trigger) return;
         loadSources(trigger.dataset.noteId, trigger.dataset.noteTitle);
@@ -389,10 +457,15 @@
       document.getElementById('closeEditBtn').addEventListener('click', closeEditModal);
       document.querySelector('[data-close-edit]').addEventListener('click', closeEditModal);
       editNoteForm.addEventListener('submit', saveNoteEdit);
+      deleteEditBtn.addEventListener('click', () => {
+        if (!activeEditNoteId) return;
+        deleteNote(activeEditNoteId);
+      });
       document.getElementById('closeSourcesBtn').addEventListener('click', closeSourcesModal);
       document.querySelector('[data-close-sources]').addEventListener('click', closeSourcesModal);
 
       renderNotes(currentNotes);
+      openRequestedNoteIfNeeded();
     </script>
   </body>
 </html>

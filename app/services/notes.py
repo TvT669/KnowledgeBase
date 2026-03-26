@@ -127,6 +127,32 @@ def update_note(
     return get_note(note_id)
 
 
+def delete_note(note_id: int) -> list[dict[str, Any]]:
+    with get_conn() as conn:
+        source_rows = conn.execute(
+            """
+            SELECT DISTINCT m.source, m.session_id
+            FROM note_sources ns
+            JOIN messages m ON m.id = ns.message_id
+            WHERE ns.note_id = ?
+              AND COALESCE(m.session_id, '') <> ''
+            """,
+            (note_id,),
+        ).fetchall()
+        cur = conn.execute(
+            """
+            DELETE FROM notes
+            WHERE id = ?
+            """,
+            (note_id,),
+        )
+
+    if cur.rowcount == 0:
+        raise KeyError(note_id)
+
+    return [dict(row) for row in source_rows]
+
+
 def get_note(note_id: int) -> dict[str, Any]:
     with get_conn() as conn:
         row = conn.execute(

@@ -125,20 +125,33 @@ textarea {
   align-items: start;
 }
 
+.overview-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.9rem;
+  margin-bottom: 1rem;
+}
+
 .workspace-panel,
 .compact-panel,
 .note-card,
 .empty-state,
-.composer-panel {
+.composer-panel,
+.metric-card {
   background: var(--surface);
   border: 1px solid var(--line);
   box-shadow: var(--shadow);
 }
 
 .workspace-panel,
-.compact-panel {
+.compact-panel,
+.metric-card {
   border-radius: 18px;
   padding: 1.1rem;
+}
+
+.focus-panel {
+  margin-bottom: 1rem;
 }
 
 .side-panel {
@@ -194,6 +207,35 @@ textarea {
   margin: 1.1rem 0 1rem;
 }
 
+.metric-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.metric-card::after {
+  content: "";
+  position: absolute;
+  inset: auto -10% -40% auto;
+  width: 150px;
+  height: 150px;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(15, 118, 110, 0.12), rgba(15, 118, 110, 0));
+}
+
+.metric-card h2 {
+  margin: 0.2rem 0 0;
+  font-size: clamp(2rem, 3vw, 2.6rem);
+  letter-spacing: -0.03em;
+}
+
+.metric-card p:last-child {
+  position: relative;
+  z-index: 1;
+  margin: 0.5rem 0 0;
+  color: var(--muted);
+  line-height: 1.65;
+}
+
 .view-switch {
   display: inline-flex;
   gap: 0.35rem;
@@ -219,10 +261,20 @@ textarea {
   box-shadow: var(--shadow-soft);
 }
 
+#recordKeyToggleBtn.is-active {
+  background: var(--accent-soft);
+  border-color: rgba(15, 118, 110, 0.25);
+  color: var(--accent);
+}
+
 .search-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;
   gap: 0.55rem;
+}
+
+.search-row-compact {
+  grid-template-columns: minmax(0, 1fr) auto;
 }
 
 input,
@@ -301,6 +353,17 @@ button:hover,
   background: var(--surface-muted);
 }
 
+.danger-button {
+  border: 1px solid rgba(185, 28, 28, 0.18);
+  background: rgba(185, 28, 28, 0.08);
+  color: #b91c1c;
+}
+
+.danger-button:hover {
+  background: rgba(185, 28, 28, 0.14);
+  border-color: rgba(185, 28, 28, 0.24);
+}
+
 .muted-link {
   color: var(--muted);
   text-decoration: none;
@@ -309,6 +372,39 @@ button:hover,
 .browser-list {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(310px, 1fr));
+  gap: 0.8rem;
+}
+
+.focus-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 0.8rem;
+  margin-top: 1rem;
+}
+
+.browser-list-inbox {
+  grid-template-columns: 1fr;
+}
+
+.inbox-section {
+  display: grid;
+  gap: 0.85rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--line);
+}
+
+.inbox-section:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.inbox-section-header {
+  margin-bottom: 0.15rem;
+}
+
+.inbox-card-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
   gap: 0.8rem;
 }
 
@@ -331,6 +427,23 @@ button:hover,
 
 .browser-card:hover {
   border-color: var(--line-strong);
+}
+
+.focus-card {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(240, 253, 250, 0.92) 100%);
+}
+
+.inbox-card {
+  min-height: 100%;
+}
+
+.inbox-status-ready {
+  border-color: rgba(16, 185, 129, 0.18);
+}
+
+.inbox-status-done {
+  background: linear-gradient(180deg, #ffffff 0%, #f7fbfa 100%);
 }
 
 .browser-head {
@@ -372,6 +485,57 @@ button:hover,
   gap: 0.55rem;
 }
 
+.card-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.inline-meta-card {
+  align-items: center;
+}
+
+.priority-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.22rem 0.62rem;
+  background: var(--surface-muted);
+  border: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.priority-high {
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.22);
+  color: #047857;
+}
+
+.priority-medium {
+  background: rgba(245, 158, 11, 0.14);
+  border-color: rgba(245, 158, 11, 0.24);
+  color: #b45309;
+}
+
+.mini-tag {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.18rem 0.55rem;
+  background: var(--surface-muted);
+  border: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.mini-tag-muted {
+  opacity: 0.8;
+}
+
 .compact-note-list,
 .guide-list,
 .note-grid,
@@ -401,6 +565,10 @@ button:hover,
 
 .compact-note-card p {
   margin: 0.55rem 0 0;
+}
+
+.compact-note-actions {
+  margin-top: 0.8rem;
 }
 
 .guide-list p {
@@ -610,8 +778,83 @@ button:hover,
   height: min(820px, calc(100% - 2.4rem));
 }
 
+.confirm-modal {
+  width: min(640px, calc(100% - 2rem));
+  height: fit-content;
+  max-height: min(560px, calc(100% - 2.4rem));
+}
+
 .note-form-standalone {
   margin-top: 1rem;
+}
+
+.record-modal {
+  width: min(980px, calc(100% - 2rem));
+  height: min(860px, calc(100% - 2.4rem));
+}
+
+.record-toolbar {
+  display: grid;
+  gap: 0.8rem;
+  margin-top: 1rem;
+}
+
+.record-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.transcript-list {
+  display: grid;
+  gap: 0.8rem;
+  margin-top: 1rem;
+  padding-right: 0.1rem;
+}
+
+.transcript-item {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface-muted);
+  padding: 0.95rem;
+}
+
+.transcript-role-user {
+  border-left: 4px solid #94a3b8;
+}
+
+.transcript-role-assistant {
+  border-left: 4px solid #0f766e;
+}
+
+.transcript-role-system {
+  border-left: 4px solid #7c3aed;
+}
+
+.transcript-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.8rem;
+  align-items: center;
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
+.transcript-text {
+  margin-top: 0.7rem;
+  color: var(--ink);
+  line-height: 1.72;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.search-hit {
+  background: rgba(245, 158, 11, 0.22);
+  color: inherit;
+  border-radius: 4px;
+  padding: 0 0.12rem;
 }
 
 pre {
@@ -625,6 +868,7 @@ pre {
 }
 
 @media (max-width: 1080px) {
+  .overview-grid,
   .dashboard,
   .composer-layout {
     grid-template-columns: 1fr;
@@ -646,6 +890,8 @@ pre {
   .browser-foot,
   .note-card-header,
   .composer-header,
+  .transcript-meta,
+  .record-filters,
   .form-actions {
     flex-direction: column;
     align-items: stretch;
@@ -664,6 +910,8 @@ pre {
   }
 
   .browser-list,
+  .focus-list,
+  .inbox-card-list,
   .note-grid {
     grid-template-columns: 1fr;
   }

@@ -24,6 +24,11 @@ class SessionNoteDraftRequest(BaseModel):
     session_id: str = Field(..., min_length=1)
 
 
+class QuickSessionNoteRequest(BaseModel):
+    source: str = Field(..., min_length=1)
+    session_id: str = Field(..., min_length=1)
+
+
 class CreateNoteRequest(BaseModel):
     title: str = Field(..., min_length=1, max_length=120)
     problem: str = Field(..., min_length=1)
@@ -43,6 +48,21 @@ class UpdateNoteRequest(BaseModel):
     key_takeaways: str = Field(..., min_length=1)
     status: str = Field(default="draft")
     source_type: str = Field(default="mixed")
+
+
+class InboxSessionRequest(BaseModel):
+    source: str = Field(..., min_length=1)
+    session_id: str = Field(..., min_length=1)
+
+
+class InboxConfirmRequest(InboxSessionRequest):
+    title: str = Field(default="", max_length=120)
+    tags: list[str] = Field(default_factory=list, max_length=12)
+    priority: str = Field(default="值得整理", max_length=40)
+
+
+class InboxDeferRequest(InboxSessionRequest):
+    snooze_until: str | None = Field(default=None)
 
 
 class MessageOut(BaseModel):

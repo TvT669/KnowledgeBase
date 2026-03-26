@@ -151,6 +151,57 @@ def ensure_db() -> None:
             END;
             """
         )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS session_insights (
+                source TEXT NOT NULL,
+                session_id TEXT NOT NULL,
+                latest_message_id INTEGER NOT NULL,
+                message_count INTEGER NOT NULL,
+                topic_title TEXT NOT NULL,
+                topic_excerpt TEXT NOT NULL,
+                tags_json TEXT NOT NULL DEFAULT '[]',
+                length_label TEXT NOT NULL,
+                priority_score INTEGER NOT NULL DEFAULT 0,
+                priority_label TEXT NOT NULL,
+                priority_reason TEXT NOT NULL,
+                updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+                PRIMARY KEY (source, session_id),
+                FOREIGN KEY (latest_message_id) REFERENCES messages(id) ON DELETE CASCADE
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS session_queue (
+                source TEXT NOT NULL,
+                session_id TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'new',
+                ai_title TEXT NOT NULL,
+                ai_excerpt TEXT NOT NULL DEFAULT '',
+                ai_tags_json TEXT NOT NULL DEFAULT '[]',
+                ai_priority TEXT NOT NULL DEFAULT '待判断',
+                ai_reason TEXT NOT NULL DEFAULT '',
+                ai_confidence REAL NOT NULL DEFAULT 0,
+                user_title TEXT,
+                user_tags_json TEXT NOT NULL DEFAULT '[]',
+                user_priority TEXT,
+                note_id INTEGER,
+                message_count INTEGER NOT NULL DEFAULT 0,
+                latest_message_id INTEGER NOT NULL,
+                length_label TEXT NOT NULL DEFAULT '',
+                first_seen_at TEXT NOT NULL DEFAULT (datetime('now')),
+                last_seen_at TEXT NOT NULL DEFAULT (datetime('now')),
+                last_reviewed_at TEXT,
+                snooze_until TEXT,
+                created_at TEXT NOT NULL DEFAULT (datetime('now')),
+                updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+                PRIMARY KEY (source, session_id),
+                FOREIGN KEY (latest_message_id) REFERENCES messages(id) ON DELETE CASCADE,
+                FOREIGN KEY (note_id) REFERENCES notes(id) ON DELETE SET NULL
+            )
+            """
+        )
 
 
 @contextmanager
