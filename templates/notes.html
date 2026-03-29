@@ -10,8 +10,8 @@
     <main class="page page-wide">
       <section class="hero hero-row">
         <div>
-          <p class="eyebrow">知识笔记库</p>
-          <h1>搜索已经沉淀下来的结构化结论</h1>
+        
+          <h1>笔记库</h1>
           <p>这里展示的是已经整理完成的笔记。你可以按关键词搜索，也可以回看每篇笔记的来源对话。</p>
         </div>
         <div class="hero-actions">
@@ -33,6 +33,22 @@
           <input id="noteSearchInput" placeholder="搜索笔记关键词，例如：幂等、重试、补偿" />
           <button id="noteSearchBtn" type="button">搜索笔记</button>
           <button id="noteResetBtn" class="ghost-button" type="button">重置</button>
+        </div>
+
+        <div class="stack-filter-bar">
+          <div>
+            <p class="eyebrow">技术栈筛选</p>
+            <p class="panel-text">自动从笔记内容识别技术栈，先按一个最可能的方向缩小范围。</p>
+          </div>
+          <div id="stackFilterList" class="tag-filter-list" aria-live="polite"></div>
+        </div>
+
+        <div class="stack-filter-bar">
+          <div>
+            <p class="eyebrow">笔记状态</p>
+            <p class="panel-text">先区分草稿、已复核和已发布，再决定今天优先完善哪一批内容。</p>
+          </div>
+          <div id="statusFilterList" class="tag-filter-list" aria-live="polite"></div>
         </div>
 
         <div id="noteResults" class="note-grid note-grid-notes"></div>
@@ -122,6 +138,8 @@
       const noteResultsEl = document.getElementById('noteResults');
       const noteSearchInput = document.getElementById('noteSearchInput');
       const noteCount = document.getElementById('noteCount');
+      const stackFilterList = document.getElementById('stackFilterList');
+      const statusFilterList = document.getElementById('statusFilterList');
       const editShell = document.getElementById('editShell');
       const editModalTitle = document.getElementById('editModalTitle');
       const editNoteForm = document.getElementById('editNoteForm');
@@ -138,9 +156,155 @@
       const sourceModalTitle = document.getElementById('sourceModalTitle');
       const sourceModalHint = document.getElementById('sourceModalHint');
       const sourceModalList = document.getElementById('sourceModalList');
+      const NOTES_PREFS_KEY = 'knowledgebase.notes.filters';
+      const EDIT_DRAFT_KEY_PREFIX = 'knowledgebase.notes.editDraft.';
 
       let currentNotes = [...initialNotes];
       let activeEditNoteId = null;
+      let activeStackFilter = 'all';
+      let activeStatusFilter = 'all';
+
+      function normalizeStackFilter(value) {
+        return typeof value === 'string' && value.trim() ? value.trim() : 'all';
+      }
+
+      function normalizeStatusFilter(value) {
+        return ['all', 'draft', 'reviewed', 'published'].includes(value) ? value : 'all';
+      }
+
+      function loadNotesPreferences() {
+        try {
+          const raw = window.localStorage.getItem(NOTES_PREFS_KEY);
+          if (!raw) {
+            return;
+          }
+
+          const prefs = JSON.parse(raw);
+          noteSearchInput.value = typeof prefs?.search === 'string' ? prefs.search : '';
+          activeStackFilter = normalizeStackFilter(prefs?.stackFilter);
+          activeStatusFilter = normalizeStatusFilter(String(prefs?.statusFilter || 'all'));
+        } catch (error) {
+          noteSearchInput.value = '';
+          activeStackFilter = 'all';
+          activeStatusFilter = 'all';
+        }
+      }
+
+      function persistNotesPreferences() {
+        try {
+          window.localStorage.setItem(
+            NOTES_PREFS_KEY,
+            JSON.stringify({
+              search: noteSearchInput.value,
+              stackFilter: normalizeStackFilter(activeStackFilter),
+              statusFilter: normalizeStatusFilter(activeStatusFilter)
+            })
+          );
+        } catch (error) {
+          // Ignore storage failures in private mode or restrictive environments.
+        }
+      }
+
+      function editDraftKey(noteId) {
+        return `${EDIT_DRAFT_KEY_PREFIX}${noteId}`;
+      }
+
+      function getEditFormData() {
+        return {
+          title: editTitle.value,
+          status: editStatus.value,
+          problem: editProblem.value,
+          root_cause: editRootCause.value,
+          solution: editSolution.value,
+          key_takeaways: editTakeaways.value
+        };
+      }
+
+      function hasEditChanges(noteId = activeEditNoteId, fields = getEditFormData()) {
+        if (!noteId) {
+          return false;
+        }
+
+        const note = noteStore.get(noteId);
+        if (!note) {
+          return Object.values(fields).some((value) => String(value || '').trim());
+        }
+
+        return (
+          String(fields.title || '').trim() !== String(note.title || '').trim() ||
+          String(fields.status || '') !== String(note.status || '') ||
+          String(fields.problem || '').trim() !== String(note.problem || '').trim() ||
+          String(fields.root_cause || '').trim() !== String(note.root_cause || '').trim() ||
+          String(fields.solution || '').trim() !== String(note.solution || '').trim() ||
+          String(fields.key_takeaways || '').trim() !== String(note.key_takeaways || '').trim()
+        );
+      }
+
+      function loadEditDraft(noteId) {
+        try {
+          const raw = window.localStorage.getItem(editDraftKey(noteId));
+          if (!raw) {
+            return null;
+          }
+
+          const draft = JSON.parse(raw);
+          if (!draft || !hasEditChanges(noteId, draft.fields || {})) {
+            return null;
+          }
+          return draft.fields;
+        } catch (error) {
+          return null;
+        }
+      }
+
+      function persistEditDraft() {
+        if (!activeEditNoteId) {
+          return;
+        }
+
+        const fields = getEditFormData();
+        try {
+          if (!hasEditChanges(activeEditNoteId, fields)) {
+            window.localStorage.removeItem(editDraftKey(activeEditNoteId));
+            return;
+          }
+
+          window.localStorage.setItem(
+            editDraftKey(activeEditNoteId),
+            JSON.stringify({
+              note_id: activeEditNoteId,
+              fields
+            })
+          );
+        } catch (error) {
+          // Ignore storage failures in private mode or restrictive environments.
+        }
+      }
+
+      function clearEditDraft(noteId) {
+        if (!noteId) {
+          return;
+        }
+        try {
+          window.localStorage.removeItem(editDraftKey(noteId));
+        } catch (error) {
+          // Ignore storage failures in private mode or restrictive environments.
+        }
+      }
+
+      function shouldWarnBeforeClosingEdit() {
+        return !editShell.hidden && hasEditChanges();
+      }
+
+      function requestCloseEditModal() {
+        if (
+          shouldWarnBeforeClosingEdit() &&
+          !window.confirm('当前笔记有未保存修改，关闭后仍可稍后恢复本地草稿。确定关闭吗？')
+        ) {
+          return;
+        }
+        closeEditModal();
+      }
 
       function escapeHtml(value) {
         return String(value || '')
@@ -151,41 +315,143 @@
           .replaceAll("'", '&#39;');
       }
 
+      function escapeRegExp(value) {
+        return String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      }
+
+      function highlightText(value, keyword) {
+        const text = String(value || '');
+        const query = String(keyword || '').trim();
+        if (!query) {
+          return escapeHtml(text);
+        }
+
+        const regex = new RegExp(escapeRegExp(query), 'ig');
+        let lastIndex = 0;
+        let result = '';
+
+        for (const match of text.matchAll(regex)) {
+          const start = match.index ?? 0;
+          const matched = match[0] || '';
+          result += escapeHtml(text.slice(lastIndex, start));
+          result += `<mark class="search-hit">${escapeHtml(matched)}</mark>`;
+          lastIndex = start + matched.length;
+        }
+
+        result += escapeHtml(text.slice(lastIndex));
+        return result;
+      }
+
+      function availableStackTags(notes) {
+        const tags = new Set();
+        for (const note of notes) {
+          for (const tag of note.stack_tags || []) {
+            if (tag) {
+              tags.add(tag);
+            }
+          }
+        }
+        if (activeStackFilter !== 'all') {
+          tags.add(activeStackFilter);
+        }
+        return [...tags].sort((left, right) => left.localeCompare(right, 'zh-CN'));
+      }
+
+      function filterNotesByStack(notes) {
+        if (activeStackFilter === 'all') {
+          return notes;
+        }
+        return notes.filter((note) => (note.stack_tags || []).includes(activeStackFilter));
+      }
+
+      function filterNotesByStatus(notes) {
+        if (activeStatusFilter === 'all') {
+          return notes;
+        }
+        return notes.filter((note) => String(note.status || '') === activeStatusFilter);
+      }
+
+      function renderStackFilters(notes) {
+        const items = ['all', ...availableStackTags(notes)];
+        stackFilterList.innerHTML = items.map((tag) => {
+          const isActive = tag === activeStackFilter;
+          const label = tag === 'all' ? '全部' : tag;
+          return `
+            <button
+              type="button"
+              class="tag-filter-btn${isActive ? ' is-active' : ''}"
+              data-stack-filter="${escapeHtml(tag)}"
+            >
+              ${escapeHtml(label)}
+            </button>
+          `;
+        }).join('');
+      }
+
+      function renderStatusFilters(notes) {
+        const items = [
+          ['all', '全部'],
+          ['draft', 'draft'],
+          ['reviewed', 'reviewed'],
+          ['published', 'published']
+        ];
+        statusFilterList.innerHTML = items.map(([status, label]) => {
+          const count = status === 'all'
+            ? notes.length
+            : notes.filter((note) => String(note.status || '') === status).length;
+          const isActive = status === activeStatusFilter;
+          return `
+            <button
+              type="button"
+              class="tag-filter-btn${isActive ? ' is-active' : ''}"
+              data-status-filter="${escapeHtml(status)}"
+            >
+              ${escapeHtml(label)} · ${count}
+            </button>
+          `;
+        }).join('');
+      }
+
       function renderNoteCard(note) {
+        const searchQuery = noteSearchInput.value.trim();
         const sourceLabels = (note.source_labels || []).join(' / ') || '未标记来源';
+        const stackTags = (note.stack_tags || [])
+          .map((tag) => `<span class="mini-tag stack-tag">${escapeHtml(tag)}</span>`)
+          .join('');
         return `
           <article class="note-card">
             <header class="note-card-header">
               <div>
-                <h2>${escapeHtml(note.title)}</h2>
+                <h2>${highlightText(note.title, searchQuery)}</h2>
                 <div class="inline-meta">
                   <span>创建于 ${escapeHtml(note.created_at)}</span>
                   <span>更新于 ${escapeHtml(note.updated_at)}</span>
                   <span>${escapeHtml(note.source_count)} 条来源</span>
                   <span>${escapeHtml(sourceLabels)}</span>
                 </div>
+                ${stackTags ? `<div class="stack-tag-row">${stackTags}</div>` : ''}
               </div>
               <span class="pill">${escapeHtml(note.status)}</span>
             </header>
 
             <section class="note-section">
               <h3>问题描述</h3>
-              <p>${escapeHtml(note.problem)}</p>
+              <p>${highlightText(note.problem, searchQuery)}</p>
             </section>
 
             <section class="note-section">
               <h3>根本原因</h3>
-              <p>${escapeHtml(note.root_cause)}</p>
+              <p>${highlightText(note.root_cause, searchQuery)}</p>
             </section>
 
             <section class="note-section">
               <h3>解决方案</h3>
-              <p>${escapeHtml(note.solution)}</p>
+              <p>${highlightText(note.solution, searchQuery)}</p>
             </section>
 
             <section class="note-section">
               <h3>关键收获</h3>
-              <p>${escapeHtml(note.key_takeaways)}</p>
+              <p>${highlightText(note.key_takeaways, searchQuery)}</p>
             </section>
 
             <footer class="browser-foot note-card-foot">
@@ -207,18 +473,40 @@
       }
 
       function renderNotes(notes) {
-        noteCount.textContent = `${notes.length} 篇笔记`;
-        if (!notes.length) {
+        renderStackFilters(notes);
+        renderStatusFilters(notes);
+        const visibleNotes = filterNotesByStatus(filterNotesByStack(notes));
+        persistNotesPreferences();
+        const activeLabels = [];
+        if (activeStatusFilter !== 'all') {
+          activeLabels.push(activeStatusFilter);
+        }
+        if (activeStackFilter !== 'all') {
+          activeLabels.push(activeStackFilter);
+        }
+        noteCount.textContent = activeLabels.length
+          ? `${visibleNotes.length} 篇 · ${activeLabels.join(' / ')}`
+          : `${visibleNotes.length} 篇笔记`;
+        if (!visibleNotes.length) {
+          const filterHints = [];
+          if (activeStatusFilter !== 'all') {
+            filterHints.push(activeStatusFilter);
+          }
+          if (activeStackFilter !== 'all') {
+            filterHints.push(activeStackFilter);
+          }
           noteResultsEl.innerHTML = `
             <section class="empty-state">
               <h2>没有找到匹配笔记</h2>
-              <p>换一个关键词试试，或者点击“重置”查看全部笔记。</p>
+              <p>${filterHints.length
+                ? `当前筛选为 ${escapeHtml(filterHints.join(' / '))}，可以切换到“全部”或换个关键词。`
+                : '换一个关键词试试，或者点击“重置”查看全部笔记。'}</p>
             </section>
           `;
           return;
         }
 
-        noteResultsEl.innerHTML = notes.map(renderNoteCard).join('');
+        noteResultsEl.innerHTML = visibleNotes.map(renderNoteCard).join('');
       }
 
       function openSourcesModal(title) {
@@ -245,13 +533,24 @@
 
         activeEditNoteId = noteId;
         editModalTitle.textContent = `编辑：${note.title}`;
-        editTitle.value = note.title || '';
-        editStatus.value = note.status || 'draft';
-        editProblem.value = note.problem || '';
-        editRootCause.value = note.root_cause || '';
-        editSolution.value = note.solution || '';
-        editTakeaways.value = note.key_takeaways || '';
-        setEditNotice('');
+        const restoredDraft = loadEditDraft(noteId);
+        if (restoredDraft) {
+          editTitle.value = restoredDraft.title || '';
+          editStatus.value = restoredDraft.status || 'draft';
+          editProblem.value = restoredDraft.problem || '';
+          editRootCause.value = restoredDraft.root_cause || '';
+          editSolution.value = restoredDraft.solution || '';
+          editTakeaways.value = restoredDraft.key_takeaways || '';
+          setEditNotice('已恢复本地未保存修改。', 'success');
+        } else {
+          editTitle.value = note.title || '';
+          editStatus.value = note.status || 'draft';
+          editProblem.value = note.problem || '';
+          editRootCause.value = note.root_cause || '';
+          editSolution.value = note.solution || '';
+          editTakeaways.value = note.key_takeaways || '';
+          setEditNotice('');
+        }
         editShell.hidden = false;
         document.body.classList.add('composer-open');
       }
@@ -263,7 +562,7 @@
 
         openEditModal(requestedNoteId);
         const note = noteStore.get(requestedNoteId);
-        if (note?.status === 'draft') {
+        if (note?.status === 'draft' && !editNotice.textContent) {
           setEditNotice('这是刚存下来的草稿，先把标题和关键收获修顺就够了。');
         }
       }
@@ -384,6 +683,7 @@
           }
 
           const data = await resp.json();
+          clearEditDraft(activeEditNoteId);
           upsertNote(data.note);
           renderNotes(currentNotes);
           setEditNotice('修改已保存。', 'success');
@@ -410,6 +710,7 @@
             throw new Error(`删除失败: ${resp.status}`);
           }
 
+          clearEditDraft(noteId);
           removeNoteLocally(noteId);
           renderNotes(currentNotes);
           if (activeEditNoteId === noteId) {
@@ -427,6 +728,8 @@
       document.getElementById('noteSearchBtn').addEventListener('click', searchNotes);
       document.getElementById('noteResetBtn').addEventListener('click', () => {
         noteSearchInput.value = '';
+        activeStackFilter = 'all';
+        activeStatusFilter = 'all';
         currentNotes = [...initialNotes];
         renderNotes(currentNotes);
       });
@@ -454,9 +757,24 @@
         loadSources(trigger.dataset.noteId, trigger.dataset.noteTitle);
       });
 
-      document.getElementById('closeEditBtn').addEventListener('click', closeEditModal);
-      document.querySelector('[data-close-edit]').addEventListener('click', closeEditModal);
+      stackFilterList.addEventListener('click', (event) => {
+        const trigger = event.target.closest('[data-stack-filter]');
+        if (!trigger) return;
+        activeStackFilter = trigger.dataset.stackFilter || 'all';
+        renderNotes(currentNotes);
+      });
+      statusFilterList.addEventListener('click', (event) => {
+        const trigger = event.target.closest('[data-status-filter]');
+        if (!trigger) return;
+        activeStatusFilter = normalizeStatusFilter(trigger.dataset.statusFilter || 'all');
+        renderNotes(currentNotes);
+      });
+
+      document.getElementById('closeEditBtn').addEventListener('click', requestCloseEditModal);
+      document.querySelector('[data-close-edit]').addEventListener('click', requestCloseEditModal);
       editNoteForm.addEventListener('submit', saveNoteEdit);
+      editNoteForm.addEventListener('input', persistEditDraft);
+      editNoteForm.addEventListener('change', persistEditDraft);
       deleteEditBtn.addEventListener('click', () => {
         if (!activeEditNoteId) return;
         deleteNote(activeEditNoteId);
@@ -464,8 +782,23 @@
       document.getElementById('closeSourcesBtn').addEventListener('click', closeSourcesModal);
       document.querySelector('[data-close-sources]').addEventListener('click', closeSourcesModal);
 
-      renderNotes(currentNotes);
+      loadNotesPreferences();
+      if (noteSearchInput.value.trim()) {
+        searchNotes().catch(() => {
+          currentNotes = [...initialNotes];
+          renderNotes(currentNotes);
+        });
+      } else {
+        renderNotes(currentNotes);
+      }
       openRequestedNoteIfNeeded();
+      window.addEventListener('beforeunload', (event) => {
+        if (!shouldWarnBeforeClosingEdit()) {
+          return;
+        }
+        event.preventDefault();
+        event.returnValue = '';
+      });
     </script>
   </body>
 </html>

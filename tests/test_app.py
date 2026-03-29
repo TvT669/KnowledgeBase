@@ -424,3 +424,135 @@ def test_quick_save_session_creates_single_draft_note() -> None:
     assert focused_notes_page.status_code == 200
     assert "这是刚存下来的草稿" in focused_notes_page.text
     assert "openRequestedNoteIfNeeded();" in focused_notes_page.text
+
+
+def test_notes_detect_stack_tags_and_render_stack_filter() -> None:
+    token = uuid4().hex[:8]
+    session_id = f"pytest-stack-note-{token}"
+    message = {
+        "source": "pytest",
+        "session_id": session_id,
+        "role": "assistant",
+        "content": f"FastAPI 使用 Pydantic 校验请求，并通过 SQLite FTS5 提供本地搜索。 {token}",
+    }
+
+    ingest = client.post("/api/ingest", json=message)
+
+    assert ingest.status_code == 200
+
+    message_id = ingest.json()["id"]
+    save_resp = client.post(
+        "/api/notes",
+        json={
+            "title": f"FastAPI + SQLite 分类验证 {token}",
+            "problem": "FastAPI 接口需要做请求校验。",
+            "root_cause": "Pydantic 模型与 SQLite FTS5 的字段设计没有对齐。",
+            "solution": "在 FastAPI 服务中同步更新 Pydantic 模型，并检查 SQLite FTS5 建表与索引。",
+            "key_takeaways": "FastAPI 很适合本地工具接口，SQLite FTS5 适合做轻量搜索。",
+            "message_ids": [message_id],
+            "status": "draft",
+            "source_type": "mixed",
+        },
+    )
+    search_resp = client.post("/api/notes/search", json={"q": token, "limit": 10})
+    notes_page = client.get("/notes")
+
+    assert save_resp.status_code == 200
+    note = save_resp.json()["note"]
+    assert "FastAPI" in note["stack_tags"]
+    assert "SQLite" in note["stack_tags"]
+    assert search_resp.status_code == 200
+    matched = next(item for item in search_resp.json()["items"] if item["id"] == note["id"])
+    assert "FastAPI" in matched["stack_tags"]
+    assert "SQLite" in matched["stack_tags"]
+    assert notes_page.status_code == 200
+    assert "技术栈筛选" in notes_page.text
+    assert "stackFilterList" in notes_page.text
+    assert "笔记状态" in notes_page.text
+    assert "statusFilterList" in notes_page.text
+    assert "knowledgebase.notes.filters" in notes_page.text
+    assert "knowledgebase.notes.editDraft." in notes_page.text
+    assert "search-hit" in notes_page.text
+
+
+def test_inbox_search_looks_past_default_group_limit() -> None:
+    token = uuid4().hex[:8]
+    target_session_id = f"pytest-inbox-search-target-{token}"
+    target_query = f"search-target-{token}"
+
+    def create_ready_session(session_id: str, marker: str) -> None:
+        messages = [
+            {
+                "source": "pytest",
+                "session_id": session_id,
+                "role": "user",
+                "content": f"线上出现重复写入，怀疑和重试没有做幂等控制有关。 {marker}",
+            },
+            {
+                "source": "pytest",
+                "session_id": session_id,
+                "role": "assistant",
+                "content": f"根因是缺少幂等键，请求重试后被重复消费。 {marker}",
+            },
+            {
+                "source": "pytest",
+                "session_id": session_id,
+                "role": "assistant",
+                "content": f"建议补充幂等键、去重记录和失败补偿日志。 {marker}",
+            },
+        ]
+
+        for message in messages:
+            ingest = client.post("/api/ingest", json=message)
+            assert ingest.status_code == 200
+
+    create_ready_session(target_session_id, target_query)
+    for index in range(13):
+        create_ready_session(
+            f"pytest-inbox-search-filler-{token}-{index}",
+            f"search-filler-{token}-{index}",
+        )
+
+    refresh_resp = client.post("/api/inbox/refresh")
+    default_inbox = client.get("/api/inbox", params={"limit_per_group": 12})
+    search_inbox = client.get(
+        "/api/inbox",
+        params={"limit_per_group": 12, "q": target_query},
+    )
+
+    assert refresh_resp.status_code == 200
+    assert default_inbox.status_code == 200
+    assert search_inbox.status_code == 200
+
+    default_session_ids = {
+        item["session_id"]
+        for items in default_inbox.json()["groups"].values()
+        for item in items
+    }
+    matched_session_ids = {
+        item["session_id"]
+        for items in search_inbox.json()["groups"].values()
+        for item in items
+    }
+
+    assert target_session_id not in default_session_ids
+    assert matched_session_ids == {target_session_id}
+
+
+def test_home_page_renders_workspace_status_filters() -> None:
+    home_page = client.get("/")
+
+    assert home_page.status_code == 200
+    assert "状态筛选" in home_page.text
+    assert "workspaceFilterList" in home_page.text
+    assert "显示已忽略" in home_page.text
+    assert "knowledgebase.home.workspace" in home_page.text
+    assert "knowledgebase.home.composerDraft" in home_page.text
+    assert "state.workspaceQuery" in home_page.text
+    assert "params.set('q', state.workspaceQuery)" in home_page.text
+    assert "正在搜索收件箱" in home_page.text
+    assert "建议先整理" in home_page.text
+    assert "待判断" in home_page.text
+    assert "稍后处理" in home_page.text
+    assert "最近完成" in home_page.text
+    assert "encodeURIComponent(noteId)" in home_page.text

@@ -70,6 +70,30 @@ def _session_to_payload(session: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _normalize_query(value: str | None) -> str:
+    return " ".join(str(value or "").strip().lower().split())
+
+
+def _item_matches_query(item: dict[str, Any], query: str) -> bool:
+    if not query:
+        return True
+
+    haystack = " ".join(
+        str(part or "")
+        for part in (
+            item.get("source"),
+            item.get("session_id"),
+            item.get("status_label"),
+            item.get("display_title"),
+            item.get("display_excerpt"),
+            item.get("display_priority"),
+            item.get("display_reason"),
+            " ".join(item.get("display_tags") or []),
+        )
+    ).lower()
+    return all(token in haystack for token in query.split())
+
+
 def _load_existing_rows(conn: Any, sessions: list[dict[str, Any]]) -> dict[tuple[str, str], dict[str, Any]]:
     if not sessions:
         return {}
@@ -290,7 +314,11 @@ def _row_to_item(row: Any) -> dict[str, Any]:
     }
 
 
-def list_inbox_groups(limit_per_group: int = 12, include_ignored: bool = False) -> dict[str, Any]:
+def list_inbox_groups(
+    limit_per_group: int = 12,
+    include_ignored: bool = False,
+    query: str | None = None,
+) -> dict[str, Any]:
     with get_conn() as conn:
         ignored_filter = "" if include_ignored else "WHERE q.status <> 'ignored'"
         rows = conn.execute(
@@ -336,13 +364,13 @@ def list_inbox_groups(limit_per_group: int = 12, include_ignored: bool = False) 
         "done_this_week": 0,
     }
     week_cutoff = (datetime.utcnow() - timedelta(days=7)).strftime("%Y-%m-%d %H:%M:%S")
+    normalized_query = _normalize_query(query)
 
     for row in rows:
         item = _row_to_item(row)
         status = item["status"]
         if status not in groups:
             continue
-        groups[status].append(item)
         if status == "ready":
             stats["ready_count"] += 1
             stats["pending_count"] += 1
@@ -358,6 +386,10 @@ def list_inbox_groups(limit_per_group: int = 12, include_ignored: bool = False) 
                 stats["done_this_week"] += 1
         elif status == "ignored":
             stats["ignored_count"] += 1
+
+        if normalized_query and not _item_matches_query(item, normalized_query):
+            continue
+        groups[status].append(item)
 
     limited_groups = {
         name: items[:limit_per_group]

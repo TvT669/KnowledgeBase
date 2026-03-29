@@ -25,11 +25,52 @@ NOTE_SELECT = """
 """
 
 
+STACK_RULES: list[dict[str, Any]] = [
+    {"tag": "FastAPI", "keywords": ("fastapi", "uvicorn", "pydantic", "starlette"), "min_hits": 1},
+    {"tag": "Python", "keywords": ("python", "pytest", "asyncio", "pip", "venv", ".py"), "min_hits": 1},
+    {"tag": "React", "keywords": ("react", "jsx", "usestate", "useeffect", "tsx"), "min_hits": 1},
+    {"tag": "TypeScript", "keywords": ("typescript", "tsconfig", ".tsx", ".ts"), "min_hits": 1},
+    {"tag": "Node.js", "keywords": ("node.js", "nodejs", "pnpm", "express", "next.js"), "min_hits": 1},
+    {"tag": "JavaScript", "keywords": ("javascript", ".js", "commonjs", "yarn"), "min_hits": 1},
+    {"tag": "C++", "keywords": ("c++", "std::", "#include", "public:", "private:", "nullptr", "vector<"), "min_hits": 1},
+    {"tag": "Objective-C", "keywords": ("objective-c", "objc", "@selector", "@interface", "@implementation", "selector", "runtime"), "min_hits": 2},
+    {"tag": "Swift", "keywords": ("swift", "swiftui", "uikit", ".swift", "optional("), "min_hits": 1},
+    {"tag": "Go", "keywords": ("golang", "goroutine", "go mod", "go test", "go build", "channel"), "min_hits": 1},
+    {"tag": "Rust", "keywords": ("rust", "cargo", "ownership", "borrow checker", "serde", "trait "), "min_hits": 1},
+    {"tag": "Java", "keywords": ("spring", "maven", "gradle", "jvm", ".java"), "min_hits": 1},
+    {"tag": "Kotlin", "keywords": ("kotlin", "jetpack compose", "coroutines", ".kt"), "min_hits": 1},
+    {"tag": "SQLite", "keywords": ("sqlite", "sqlite3", "fts5"), "min_hits": 1},
+    {"tag": "PostgreSQL", "keywords": ("postgres", "postgresql"), "min_hits": 1},
+    {"tag": "Redis", "keywords": ("redis", "redis-cli", "cache aside"), "min_hits": 1},
+    {"tag": "Docker", "keywords": ("docker", "dockerfile", "docker compose"), "min_hits": 1},
+    {"tag": "Kubernetes", "keywords": ("kubernetes", "k8s", "kubectl"), "min_hits": 1},
+]
+
+
+def _detect_stack_tags(note: dict[str, Any], limit: int = 2) -> list[str]:
+    text = " ".join(
+        str(note.get(field) or "")
+        for field in ("title", "problem", "root_cause", "solution", "key_takeaways")
+    ).lower()
+    if not text.strip():
+        return []
+
+    matched: list[tuple[int, int, str]] = []
+    for index, rule in enumerate(STACK_RULES):
+        score = sum(1 for keyword in rule["keywords"] if keyword.lower() in text)
+        if score >= int(rule["min_hits"]):
+            matched.append((score, -index, str(rule["tag"])))
+
+    matched.sort(reverse=True)
+    return [tag for _, _, tag in matched[:limit]]
+
+
 def _normalize_note_row(row: Any) -> dict[str, Any]:
     note = dict(row)
     labels = (note.get("source_labels") or "").split(",")
     note["source_labels"] = [label.strip() for label in labels if label and label.strip()]
     note["source_count"] = int(note.get("source_count") or 0)
+    note["stack_tags"] = _detect_stack_tags(note)
     return note
 
 

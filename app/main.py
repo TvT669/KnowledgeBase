@@ -261,8 +261,12 @@ def remove_note(note_id: int) -> dict[str, str]:
 
 
 @app.get("/api/inbox")
-def inbox(limit_per_group: int = 12, include_ignored: bool = False) -> dict[str, dict | list]:
-    return list_inbox_groups(limit_per_group=limit_per_group, include_ignored=include_ignored)
+def inbox(
+    limit_per_group: int = 12,
+    include_ignored: bool = False,
+    q: str = "",
+) -> dict[str, dict | list]:
+    return list_inbox_groups(limit_per_group=limit_per_group, include_ignored=include_ignored, query=q)
 
 
 @app.post("/api/inbox/refresh")

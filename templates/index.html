@@ -8,128 +8,125 @@
   </head>
   <body>
     <main class="page page-home">
-      <section class="hero hero-home">
-        <div class="hero-copy">
-          <p class="eyebrow">知识收件箱</p>
-          <h1>先处理值得沉淀的会话，再把结论收进笔记库</h1>
-          <p class="hero-text">
-            首页现在只做一件事：帮你判断下一条最值得整理的对话。AI 负责给建议，你来确认和收敛结论。
-          </p>
-        </div>
-        <div class="hero-actions">
-          <button id="refreshInboxBtn" class="ghost-button" type="button">刷新收件箱</button>
-          <a class="ghost-button" href="/notes">查看笔记库</a>
-        </div>
-      </section>
-
-      <section class="overview-grid">
-        <article class="metric-card">
-          <p class="eyebrow">待处理</p>
-          <h2 id="pendingMetric">{{ inbox_stats.pending_count }}</h2>
-          <p>目前还没有沉淀成笔记、值得你继续判断的会话总数。</p>
-        </article>
-        <article class="metric-card">
-          <p class="eyebrow">优先整理</p>
-          <h2 id="readyMetric">{{ inbox_stats.ready_count }}</h2>
-          <p>系统判断内容密度较高、适合优先沉淀的会话。</p>
-        </article>
-        <article class="metric-card">
-          <p class="eyebrow">本周完成</p>
-          <h2 id="doneMetric">{{ inbox_stats.done_this_week }}</h2>
-          <p>最近 7 天已经从收件箱成功转成结构化笔记的数量。</p>
-        </article>
-      </section>
-
-      <section class="compact-panel focus-panel">
-        <header class="compact-header">
-          <div>
-            <p class="eyebrow">今日建议</p>
-            <h2>先处理这几条，今天就能看到积累</h2>
-            <p class="panel-text">只挑最值得先沉淀的会话，支持直接一键存成草稿，先留住价值再慢慢精修。</p>
+      <section class="home-shell">
+        <header class="page-bar">
+          <div class="page-bar-copy">
+            <p class="eyebrow">本地知识工作台</p>
+            <h1>知识收件箱</h1>
+            <p class="hero-text">
+              先判断，再沉淀。AI 给建议，你只处理值得留下来的会话。
+            </p>
           </div>
-          <div id="focusCount" class="panel-badge">0 条建议</div>
+          <div class="hero-actions">
+            <button id="refreshInboxBtn" class="ghost-button" type="button">刷新收件箱</button>
+            <a class="ghost-button" href="/notes">查看笔记库</a>
+          </div>
         </header>
-        <div id="focusList" class="focus-list" aria-live="polite"></div>
-      </section>
 
-      <section class="dashboard">
-        <section class="workspace-panel">
-          <header class="panel-header">
-            <div>
-              <p class="eyebrow">整理工作台</p>
-              <h2 id="workspaceTitle">知识收件箱</h2>
-              <p id="workspaceHint" class="panel-text">
-                优先处理“建议先整理”；想先留住价值时，直接一键存成草稿，再回头慢慢精修。
-              </p>
-            </div>
-            <div class="panel-badge" id="workspaceCount">{{ inbox_stats.pending_count }} 个待处理会话</div>
-          </header>
-
-          <div class="toolbar">
-            <div class="search-row">
-              <input id="searchInput" placeholder="搜索标题、标签、会话 ID 或摘要" />
-              <button id="searchBtn" type="button">搜索</button>
-              <button id="resetBtn" class="ghost-button" type="button">重置</button>
-            </div>
-          </div>
-
-          <div id="browserResults" class="browser-list browser-list-inbox" aria-live="polite"></div>
+        <section class="status-strip" aria-label="工作台概览">
+          <article class="status-chip">
+            <span class="status-label">待处理</span>
+            <strong id="pendingMetric" class="status-number">{{ inbox_stats.pending_count }}</strong>
+            <span class="status-note">需要继续判断或整理</span>
+          </article>
+          <article class="status-chip">
+            <span class="status-label">优先整理</span>
+            <strong id="readyMetric" class="status-number">{{ inbox_stats.ready_count }}</strong>
+            <span class="status-note">值得先动手沉淀</span>
+          </article>
+          <article class="status-chip">
+            <span class="status-label">本周完成</span>
+            <strong id="doneMetric" class="status-number">{{ inbox_stats.done_this_week }}</strong>
+            <span class="status-note">最近 7 天已转成笔记</span>
+          </article>
         </section>
 
-        <aside class="side-panel">
-          <section class="compact-panel">
-            <header class="compact-header">
+        <section class="dashboard dashboard-calm">
+          <section class="workspace-panel workspace-main">
+            <header class="panel-header panel-header-compact">
               <div>
-                <p class="eyebrow">最近笔记</p>
-                <h2>最近沉淀的内容</h2>
+                <p class="eyebrow">整理工作台</p>
+                <h2 id="workspaceTitle">从这里开始处理今天的会话</h2>
+                <p id="workspaceHint" class="panel-text">
+                  优先处理“建议先整理”；想先留住价值时，直接一键存成草稿，再回头慢慢精修。
+                </p>
               </div>
-              <a class="muted-link" href="/notes">查看全部</a>
+              <div class="panel-badge" id="workspaceCount">{{ inbox_stats.pending_count }} 个待处理会话</div>
             </header>
 
-            {% if recent_notes %}
-            <div class="compact-note-list">
-              {% for note in recent_notes %}
-              <article class="compact-note-card">
-                <header>
-                  <h3>{{ note.title }}</h3>
-                  <span class="pill">{{ note.status }}</span>
-                </header>
-                <p>{{ note.problem }}</p>
-                <div class="inline-meta">
-                  <span>{{ note.source_count }} 条来源</span>
-                  <span>{{ (note.source_labels | join(' / ')) or '未标记来源' }}</span>
+            <div class="toolbar toolbar-calm">
+              <div class="search-row search-row-calm">
+                <input id="searchInput" placeholder="搜索标题、标签、会话 ID 或摘要" />
+                <button id="searchBtn" type="button">搜索</button>
+                <button id="resetBtn" class="ghost-button" type="button">重置</button>
+              </div>
+
+              <div class="workspace-filter-bar">
+                <div class="workspace-filter-header">
+                  <div>
+                    <p class="eyebrow">状态筛选</p>
+                    <p class="panel-text">先按当前处理状态收窄范围，再决定要不要继续整理。</p>
+                  </div>
+                  <button id="toggleIgnoredBtn" class="ghost-button" type="button">显示已忽略</button>
                 </div>
-                <div class="inline-actions compact-note-actions">
-                  <a class="ghost-button" href="/notes?note_id={{ note.id }}">
-                    {% if note.status == "draft" %}继续完善{% else %}打开笔记{% endif %}
-                  </a>
+                <div id="workspaceFilterList" class="tag-filter-list" aria-live="polite"></div>
+              </div>
+            </div>
+
+            <section class="focus-inline">
+              <header class="compact-inline-head">
+                <div>
+                  <p class="eyebrow">今日建议</p>
+                  <h3>先处理这几条</h3>
                 </div>
-              </article>
-              {% endfor %}
-            </div>
-            {% else %}
-            <div class="empty-state compact">
-              <h3>还没有笔记</h3>
-              <p>从左边收件箱开始处理第一条会话，很快就能积累出你的第一批知识卡片。</p>
-            </div>
-            {% endif %}
+                <div id="focusCount" class="panel-badge">0 条建议</div>
+              </header>
+              <div id="focusList" class="focus-list focus-list-inline" aria-live="polite"></div>
+            </section>
+
+            <div id="browserResults" class="browser-list browser-list-inbox" aria-live="polite"></div>
           </section>
 
-          <section class="compact-panel">
-            <header class="compact-header">
-              <div>
-                <p class="eyebrow">使用建议</p>
-                <h2>推荐的处理顺序</h2>
+          <aside class="side-panel side-panel-calm">
+            <section class="compact-panel recent-notes-panel">
+              <header class="compact-header compact-header-tight">
+                <div>
+                  <p class="eyebrow">最近笔记</p>
+                  <h2>刚刚沉淀下来的内容</h2>
+                </div>
+                <a class="muted-link" href="/notes">查看全部</a>
+              </header>
+
+              {% if recent_notes %}
+              <div class="compact-note-list">
+                {% for note in recent_notes %}
+                <article class="compact-note-card">
+                  <header>
+                    <h3>{{ note.title }}</h3>
+                    <span class="pill">{{ note.status }}</span>
+                  </header>
+                  <p>{{ note.problem }}</p>
+                  <div class="inline-meta">
+                    <span>{{ note.source_count }} 条来源</span>
+                    <span>{{ (note.source_labels | join(' / ')) or '未标记来源' }}</span>
+                  </div>
+                  <div class="inline-actions compact-note-actions">
+                    <a class="ghost-button" href="/notes?note_id={{ note.id }}">
+                      {% if note.status == "draft" %}继续完善{% else %}打开笔记{% endif %}
+                    </a>
+                  </div>
+                </article>
+                {% endfor %}
               </div>
-            </header>
-            <div class="guide-list">
-              <p>1. 先看“建议先整理”，优先处理已经出现问题、方案和结论的会话。</p>
-              <p>2. 对标题、标签和优先级没有把握时，先点“确认建议”再整理。</p>
-              <p>3. 一时不想处理就移到“稍后”，避免首页一直堆积未决候选。</p>
-              <p>4. 保存笔记后，该会话会自动进入“最近完成”。</p>
-            </div>
-          </section>
-        </aside>
+              {% else %}
+              <div class="empty-state compact">
+                <h3>还没有笔记</h3>
+                <p>从左边收件箱处理第一条会话，很快就能积累出第一批知识卡片。</p>
+              </div>
+              {% endif %}
+            </section>
+          </aside>
+        </section>
       </section>
     </main>
 
@@ -286,6 +283,9 @@
       const state = {
         inboxGroups: cloneGroups(initialInboxGroups),
         inboxStats: { ...initialInboxStats },
+        activeWorkspaceFilter: 'all',
+        showIgnored: false,
+        workspaceQuery: '',
         activeRecordSession: null,
         activeRecordMessages: [],
         activeRecordFilteredMessages: [],
@@ -315,6 +315,37 @@
         done: {
           title: '最近完成',
           hint: '已经整理过的会话，方便你快速回看。'
+        },
+        ignored: {
+          title: '已忽略',
+          hint: '这些会话默认不会出现在收件箱里，只有在你主动展开时才会显示。'
+        }
+      };
+
+      const workspaceFilterMeta = {
+        all: {
+          label: '全部',
+          hint: '优先处理“建议先整理”；想先留住价值时，直接一键存成草稿，再回头慢慢精修。'
+        },
+        ready: {
+          label: '建议先整理',
+          hint: '只看已经出现问题、方案或结论的会话，适合优先沉淀。'
+        },
+        new: {
+          label: '待判断',
+          hint: '只看还需要你快速判断去留的会话。'
+        },
+        later: {
+          label: '稍后处理',
+          hint: '只看暂时延后的会话，适合集中回收旧待办。'
+        },
+        done: {
+          label: '最近完成',
+          hint: '只看已经沉淀成笔记的会话，方便回看刚完成的整理结果。'
+        },
+        ignored: {
+          label: '已忽略',
+          hint: '只看已经明确忽略的会话，适合集中回收误判或临时跳过的内容。'
         }
       };
 
@@ -323,6 +354,8 @@
       const browserResultsEl = document.getElementById('browserResults');
       const workspaceHintEl = document.getElementById('workspaceHint');
       const workspaceCountEl = document.getElementById('workspaceCount');
+      const workspaceFilterListEl = document.getElementById('workspaceFilterList');
+      const toggleIgnoredBtn = document.getElementById('toggleIgnoredBtn');
       const searchInputEl = document.getElementById('searchInput');
       const pendingMetricEl = document.getElementById('pendingMetric');
       const readyMetricEl = document.getElementById('readyMetric');
@@ -358,6 +391,8 @@
       const composerNotice = document.getElementById('composerNotice');
       const regenDraftBtn = document.getElementById('regenDraftBtn');
       const saveNoteBtn = document.getElementById('saveNoteBtn');
+      const WORKSPACE_PREFS_KEY = 'knowledgebase.home.workspace';
+      const COMPOSER_DRAFT_KEY = 'knowledgebase.home.composerDraft';
 
       function cloneGroups(groups) {
         return {
@@ -367,6 +402,49 @@
           done: [...(groups.done || [])],
           ignored: [...(groups.ignored || [])]
         };
+      }
+
+      function normalizeWorkspaceFilter(value, showIgnored = state.showIgnored) {
+        const allowed = ['all', 'ready', 'new', 'later', 'done', ...(showIgnored ? ['ignored'] : [])];
+        return allowed.includes(value) ? value : 'all';
+      }
+
+      function loadWorkspacePreferences() {
+        try {
+          const raw = window.localStorage.getItem(WORKSPACE_PREFS_KEY);
+          if (!raw) {
+            return;
+          }
+
+          const prefs = JSON.parse(raw);
+          state.showIgnored = Boolean(prefs?.showIgnored);
+          searchInputEl.value = typeof prefs?.search === 'string' ? prefs.search : '';
+          state.activeWorkspaceFilter = normalizeWorkspaceFilter(
+            String(prefs?.filter || 'all'),
+            state.showIgnored
+          );
+          state.workspaceQuery = searchInputEl.value.trim();
+        } catch (error) {
+          state.showIgnored = false;
+          state.activeWorkspaceFilter = 'all';
+          state.workspaceQuery = '';
+          searchInputEl.value = '';
+        }
+      }
+
+      function persistWorkspacePreferences() {
+        try {
+          window.localStorage.setItem(
+            WORKSPACE_PREFS_KEY,
+            JSON.stringify({
+              search: state.workspaceQuery,
+              filter: normalizeWorkspaceFilter(state.activeWorkspaceFilter, state.showIgnored),
+              showIgnored: state.showIgnored
+            })
+          );
+        } catch (error) {
+          // Ignore storage failures in private mode or restrictive environments.
+        }
       }
 
       function escapeHtml(value) {
@@ -434,11 +512,58 @@
         workspaceHintEl.textContent = message;
       }
 
-      function updateWorkspaceMeta() {
-        workspaceCountEl.textContent = `${state.inboxStats.pending_count || 0} 个待处理会话`;
+      function availableWorkspaceKeys() {
+        return state.showIgnored
+          ? ['ready', 'new', 'later', 'done', 'ignored']
+          : ['ready', 'new', 'later', 'done'];
+      }
+
+      function visibleWorkspaceKeys() {
+        return state.activeWorkspaceFilter === 'all'
+          ? availableWorkspaceKeys()
+          : [state.activeWorkspaceFilter];
+      }
+
+      function countItems(items) {
+        return Array.isArray(items) ? items.length : 0;
+      }
+
+      function renderWorkspaceFilters(groups) {
+        const items = ['all', ...availableWorkspaceKeys()];
+        workspaceFilterListEl.innerHTML = items.map((key) => {
+          const meta = workspaceFilterMeta[key];
+          const count = key === 'all'
+            ? availableWorkspaceKeys().reduce((total, groupKey) => total + countItems(groups[groupKey]), 0)
+            : countItems(groups[key]);
+          return `
+            <button
+              type="button"
+              class="tag-filter-btn workspace-filter-btn${state.activeWorkspaceFilter === key ? ' is-active' : ''}"
+              data-workspace-filter="${escapeHtml(key)}"
+            >
+              ${escapeHtml(meta.label)} · ${count}
+            </button>
+          `;
+        }).join('');
+        toggleIgnoredBtn.classList.toggle('is-active', state.showIgnored);
+        toggleIgnoredBtn.textContent = state.showIgnored ? '隐藏已忽略' : '显示已忽略';
+      }
+
+      function updateWorkspaceMeta(groups) {
+        const visibleCount = visibleWorkspaceKeys()
+          .reduce((total, key) => total + countItems(groups[key]), 0);
+        const filterMeta = workspaceFilterMeta[state.activeWorkspaceFilter] || workspaceFilterMeta.all;
+        workspaceCountEl.textContent = state.workspaceQuery
+          ? `搜索结果 ${visibleCount} 个会话`
+          : `当前显示 ${visibleCount} 个会话`;
         pendingMetricEl.textContent = state.inboxStats.pending_count || 0;
         readyMetricEl.textContent = state.inboxStats.ready_count || 0;
         doneMetricEl.textContent = state.inboxStats.done_this_week || 0;
+        setWorkspaceMessage(
+          state.workspaceQuery
+            ? `当前搜索“${state.workspaceQuery}”。${filterMeta.hint}`
+            : filterMeta.hint
+        );
       }
 
       function findInboxItem(source, sessionId) {
@@ -485,6 +610,8 @@
         const title = item.display_title || item.session_id;
         const statusBadge = item.status === 'done'
           ? '<span class="pill">已完成</span>'
+          : item.status === 'ignored'
+            ? '<span class="pill">已忽略</span>'
           : `<span class="pill">${escapeHtml(item.message_count)} 条</span>`;
         let actions = `
           <button
@@ -498,7 +625,18 @@
           </button>
         `;
 
-        if (item.status !== 'done') {
+        if (item.status === 'ignored') {
+          actions += `
+            <button
+              type="button"
+              class="ghost-button mark-inbox-ready"
+              data-source="${escapeHtml(item.source)}"
+              data-session-id="${escapeHtml(item.session_id)}"
+            >
+              恢复待办
+            </button>
+          `;
+        } else if (item.status !== 'done') {
           actions += `
             <button
               type="button"
@@ -672,18 +810,14 @@
       }
 
       function filterGroups() {
-        const keyword = searchInputEl.value.trim().toLowerCase();
-        if (!keyword) {
-          return cloneGroups(state.inboxGroups);
-        }
+        const filtered = cloneGroups(state.inboxGroups);
 
-        const filtered = {};
-        for (const [key, items] of Object.entries(state.inboxGroups)) {
-          filtered[key] = (items || []).filter((item) =>
-            `${item.source} ${item.session_id} ${item.display_title || ''} ${item.display_excerpt || ''} ${(item.display_tags || []).join(' ')} ${item.display_reason || ''}`
-              .toLowerCase()
-              .includes(keyword)
-          );
+        if (state.activeWorkspaceFilter !== 'all') {
+          for (const key of ['ready', 'new', 'later', 'done', 'ignored']) {
+            if (key !== state.activeWorkspaceFilter) {
+              filtered[key] = [];
+            }
+          }
         }
         return filtered;
       }
@@ -717,23 +851,28 @@
       }
 
       function renderWorkspace() {
-        updateWorkspaceMeta();
         renderFocusStrip();
         const groups = filterGroups();
-        const visibleCount = ['ready', 'new', 'later', 'done']
+        renderWorkspaceFilters(groups);
+        updateWorkspaceMeta(groups);
+        persistWorkspacePreferences();
+        const visibleCount = visibleWorkspaceKeys()
           .reduce((total, key) => total + (groups[key] || []).length, 0);
 
         if (!visibleCount) {
+          const filterLabel = (workspaceFilterMeta[state.activeWorkspaceFilter] || workspaceFilterMeta.all).label;
           browserResultsEl.innerHTML = `
             <section class="empty-state">
               <h2>没有找到匹配的会话</h2>
-              <p>换一个关键词试试，或者点击“重置”查看全部收件箱内容。</p>
+              <p>${state.workspaceQuery
+                ? `搜索词是“${escapeHtml(state.workspaceQuery)}”，当前筛选是“${escapeHtml(filterLabel)}”。可以换个关键词，或者点击“重置”查看全部收件箱内容。`
+                : `当前筛选是“${escapeHtml(filterLabel)}”。换一个关键词试试，或者点击“重置”查看全部收件箱内容。`}</p>
             </section>
           `;
           return;
         }
 
-        browserResultsEl.innerHTML = ['ready', 'new', 'later', 'done']
+        browserResultsEl.innerHTML = visibleWorkspaceKeys()
           .map((key) => renderGroupSection(key, groups[key] || []))
           .join('');
       }
@@ -746,17 +885,38 @@
       async function loadInbox(options = {}) {
         const { withRefresh = false } = options;
         refreshInboxBtn.disabled = true;
-        if (withRefresh) {
-          setWorkspaceMessage('正在刷新收件箱...');
-          await fetch('/api/inbox/refresh', { method: 'POST' });
-        }
+        try {
+          if (withRefresh) {
+            setWorkspaceMessage('正在刷新收件箱...');
+            const refreshResp = await fetch('/api/inbox/refresh', { method: 'POST' });
+            if (!refreshResp.ok) {
+              throw new Error(`刷新失败: ${refreshResp.status}`);
+            }
+          }
 
-        const resp = await fetch('/api/inbox?limit_per_group=12');
-        const data = await resp.json();
-        syncInboxState(data);
-        renderWorkspace();
-        setWorkspaceMessage('优先处理“建议先整理”；想先留住价值时，直接一键存成草稿，再回头慢慢精修。');
-        refreshInboxBtn.disabled = false;
+          const params = new URLSearchParams();
+          params.set('limit_per_group', '12');
+          params.set('include_ignored', state.showIgnored ? 'true' : 'false');
+          if (state.workspaceQuery) {
+            params.set('q', state.workspaceQuery);
+          }
+
+          const resp = await fetch(`/api/inbox?${params.toString()}`);
+          if (!resp.ok) {
+            throw new Error(`加载收件箱失败: ${resp.status}`);
+          }
+          const data = await resp.json();
+          syncInboxState(data);
+          renderWorkspace();
+        } finally {
+          refreshInboxBtn.disabled = false;
+        }
+      }
+
+      async function submitWorkspaceSearch() {
+        state.workspaceQuery = searchInputEl.value.trim();
+        setWorkspaceMessage(state.workspaceQuery ? '正在搜索收件箱...' : '正在恢复全部收件箱内容...');
+        await loadInbox();
       }
 
       function setConfirmNotice(message, type = '') {
@@ -789,6 +949,92 @@
       function setNotice(message, type = '') {
         composerNotice.textContent = message;
         composerNotice.className = type ? `notice ${type}` : 'notice';
+      }
+
+      function composerDraftSignature(mode, payload) {
+        if (mode === 'session') {
+          return `session:${payload.source}:${payload.session_id}`;
+        }
+        return `message:${(payload.message_ids || []).join(',')}`;
+      }
+
+      function getComposerFormData() {
+        return {
+          title: noteTitle.value,
+          problem: noteProblem.value,
+          root_cause: noteRootCause.value,
+          solution: noteSolution.value,
+          key_takeaways: noteTakeaways.value
+        };
+      }
+
+      function hasComposerDraftContent(data = getComposerFormData()) {
+        return Object.values(data).some((value) => String(value || '').trim());
+      }
+
+      function loadComposerDraft(signature) {
+        try {
+          const raw = window.localStorage.getItem(COMPOSER_DRAFT_KEY);
+          if (!raw) {
+            return null;
+          }
+
+          const draft = JSON.parse(raw);
+          if (!draft || draft.signature !== signature || !hasComposerDraftContent(draft.fields || {})) {
+            return null;
+          }
+          return draft.fields;
+        } catch (error) {
+          return null;
+        }
+      }
+
+      function persistComposerDraft() {
+        if (!state.activeDraftSignature) {
+          return;
+        }
+
+        const fields = getComposerFormData();
+        try {
+          if (!hasComposerDraftContent(fields)) {
+            window.localStorage.removeItem(COMPOSER_DRAFT_KEY);
+            return;
+          }
+
+          window.localStorage.setItem(
+            COMPOSER_DRAFT_KEY,
+            JSON.stringify({
+              signature: state.activeDraftSignature,
+              mode: state.activeDraftMode,
+              payload: state.activeDraftPayload,
+              fields
+            })
+          );
+        } catch (error) {
+          // Ignore storage failures in private mode or restrictive environments.
+        }
+      }
+
+      function clearComposerDraft() {
+        try {
+          window.localStorage.removeItem(COMPOSER_DRAFT_KEY);
+        } catch (error) {
+          // Ignore storage failures in private mode or restrictive environments.
+        }
+      }
+
+      function shouldWarnBeforeClosingComposer() {
+        return !composerShell.hidden && hasComposerDraftContent();
+      }
+
+      function requestCloseComposer() {
+        if (
+          shouldWarnBeforeClosingComposer() &&
+          !window.confirm('当前整理面板里有未保存内容，关闭后仍可稍后恢复本地草稿。确定关闭吗？')
+        ) {
+          return;
+        }
+        closeComposer();
       }
 
       function fillDraft(draft) {
@@ -831,29 +1077,37 @@
       function openComposerBase(mode, payload, metaText) {
         state.activeDraftMode = mode;
         state.activeDraftPayload = payload;
+        state.activeDraftSignature = composerDraftSignature(mode, payload);
         state.activeMessageIds = mode === 'message' ? [...payload.message_ids] : [];
         state.activeSources = [];
         noteForm.reset();
         composerModePill.textContent = mode === 'session' ? '整段会话' : '筛选消息';
         composerSourceMeta.textContent = metaText;
         renderSourcePreview();
-        setNotice('');
+        const restoredDraft = loadComposerDraft(state.activeDraftSignature);
+        if (restoredDraft) {
+          fillDraft(restoredDraft);
+          setNotice('已恢复本地草稿，正在同步来源消息。', 'success');
+        } else {
+          setNotice('');
+        }
         composerShell.hidden = false;
         document.body.classList.add('composer-open');
+        return Boolean(restoredDraft);
       }
 
       function openComposerForSession(source, sessionId, title = '') {
-        openComposerBase(
+        const restoredDraft = openComposerBase(
           'session',
           { source, session_id: sessionId },
           `来源：${source} · ${title || `会话 ${sessionId}`}`
         );
-        generateDraft();
+        generateDraft({ preserveExisting: restoredDraft });
       }
 
       function openComposerForMessages(messageIds, metaText) {
-        openComposerBase('message', { message_ids: messageIds }, metaText);
-        generateDraft();
+        const restoredDraft = openComposerBase('message', { message_ids: messageIds }, metaText);
+        generateDraft({ preserveExisting: restoredDraft });
       }
 
       function isLikelyKeyPointMessage(item) {
@@ -973,6 +1227,7 @@
         document.body.classList.remove('composer-open');
         state.activeDraftMode = null;
         state.activeDraftPayload = null;
+        state.activeDraftSignature = '';
         state.activeMessageIds = [];
         state.activeSources = [];
         noteForm.reset();
@@ -980,9 +1235,11 @@
         setNotice('');
       }
 
-      async function generateDraft() {
+      async function generateDraft(options = {}) {
+        const { preserveExisting = false } = options;
         if (!state.activeDraftMode || !state.activeDraftPayload) return;
 
+        const requestSignature = state.activeDraftSignature;
         setBusy(true);
         setNotice('正在生成结构化草稿...');
 
@@ -1001,30 +1258,83 @@
           }
 
           const data = await resp.json();
+          if (requestSignature !== state.activeDraftSignature) {
+            return;
+          }
           state.activeSources = data.sources || [];
           state.activeMessageIds = state.activeSources.map((item) => item.id);
           renderSourcePreview();
-          fillDraft(data.draft || {});
+          if (!(preserveExisting && requestSignature === state.activeDraftSignature && hasComposerDraftContent())) {
+            fillDraft(data.draft || {});
+          }
           if (state.activeDraftMode === 'session') {
             composerSourceMeta.textContent = `来源：${state.activeDraftPayload.source} · 会话 ${state.activeDraftPayload.session_id} · 已载入 ${state.activeMessageIds.length} 条消息`;
           }
-          setNotice('草稿已生成，可以直接修改后保存。', 'success');
+          persistComposerDraft();
+          setNotice(
+            preserveExisting && requestSignature === state.activeDraftSignature
+              ? '已恢复本地草稿，同时重新载入了来源消息。'
+              : '草稿已生成，可以直接修改后保存。',
+            'success'
+          );
         } catch (error) {
+          if (requestSignature !== state.activeDraftSignature) {
+            return;
+          }
           renderSourcePreview();
           setNotice(error.message || '生成草稿失败，请稍后再试。', 'error');
         } finally {
-          setBusy(false);
+          if (requestSignature === state.activeDraftSignature) {
+            setBusy(false);
+          }
         }
       }
 
-      document.getElementById('searchBtn').addEventListener('click', renderWorkspace);
+      document.getElementById('searchBtn').addEventListener('click', () => {
+        submitWorkspaceSearch().catch((error) => {
+          setWorkspaceMessage(error.message || '搜索收件箱失败，请稍后再试。');
+        });
+      });
       document.getElementById('resetBtn').addEventListener('click', () => {
         searchInputEl.value = '';
+        submitWorkspaceSearch().catch((error) => {
+          setWorkspaceMessage(error.message || '恢复收件箱失败，请稍后再试。');
+        });
+      });
+      workspaceFilterListEl.addEventListener('click', (event) => {
+        const button = event.target.closest('[data-workspace-filter]');
+        if (!button) {
+          return;
+        }
+        state.activeWorkspaceFilter = button.dataset.workspaceFilter || 'all';
         renderWorkspace();
+      });
+      toggleIgnoredBtn.addEventListener('click', async () => {
+        const previousShowIgnored = state.showIgnored;
+        const previousFilter = state.activeWorkspaceFilter;
+        toggleIgnoredBtn.disabled = true;
+        state.showIgnored = !state.showIgnored;
+        if (!state.showIgnored && state.activeWorkspaceFilter === 'ignored') {
+          state.activeWorkspaceFilter = 'all';
+        }
+        setWorkspaceMessage(state.showIgnored ? '正在载入已忽略会话...' : '正在隐藏已忽略会话...');
+        try {
+          await loadInbox();
+        } catch (error) {
+          state.showIgnored = previousShowIgnored;
+          state.activeWorkspaceFilter = previousFilter;
+          setWorkspaceMessage(error.message || '更新忽略列表失败，请稍后再试。');
+          renderWorkspace();
+        } finally {
+          toggleIgnoredBtn.disabled = false;
+        }
       });
       searchInputEl.addEventListener('keydown', (event) => {
         if (event.key === 'Enter') {
-          renderWorkspace();
+          event.preventDefault();
+          submitWorkspaceSearch().catch((error) => {
+            setWorkspaceMessage(error.message || '搜索收件箱失败，请稍后再试。');
+          });
         }
       });
 
@@ -1168,8 +1478,8 @@
         }
       });
 
-      document.getElementById('closeComposerBtn').addEventListener('click', closeComposer);
-      document.querySelector('[data-close-composer]').addEventListener('click', closeComposer);
+      document.getElementById('closeComposerBtn').addEventListener('click', requestCloseComposer);
+      document.querySelector('[data-close-composer]').addEventListener('click', requestCloseComposer);
       document.getElementById('closeRecordBtn').addEventListener('click', closeRecordShell);
       document.querySelector('[data-close-record]').addEventListener('click', closeRecordShell);
       recordSearchInput.addEventListener('input', (event) => {
@@ -1211,7 +1521,8 @@
           state.activeRecordSession.title
         );
       });
-      regenDraftBtn.addEventListener('click', generateDraft);
+      regenDraftBtn.addEventListener('click', () => generateDraft({ preserveExisting: false }));
+      noteForm.addEventListener('input', persistComposerDraft);
 
       noteForm.addEventListener('submit', async (event) => {
         event.preventDefault();
@@ -1244,9 +1555,15 @@
             throw new Error(`保存失败: ${resp.status}`);
           }
 
+          const data = await resp.json();
+          const noteId = Number(data?.note?.id || 0);
+          clearComposerDraft();
+
           setNotice('笔记已保存，正在跳转到笔记库。', 'success');
           window.setTimeout(() => {
-            window.location.href = '/notes';
+            window.location.href = noteId
+              ? `/notes?note_id=${encodeURIComponent(noteId)}`
+              : '/notes';
           }, 500);
         } catch (error) {
           setNotice(error.message || '保存失败，请稍后再试。', 'error');
@@ -1255,7 +1572,21 @@
         }
       });
 
+      loadWorkspacePreferences();
       renderWorkspace();
+      if (state.showIgnored || state.workspaceQuery) {
+        setWorkspaceMessage(state.workspaceQuery ? '正在搜索收件箱...' : '正在载入已忽略会话...');
+        loadInbox().catch((error) => {
+          setWorkspaceMessage(error.message || '加载收件箱失败，请稍后再试。');
+        });
+      }
+      window.addEventListener('beforeunload', (event) => {
+        if (!shouldWarnBeforeClosingComposer()) {
+          return;
+        }
+        event.preventDefault();
+        event.returnValue = '';
+      });
     </script>
   </body>
 </html>
