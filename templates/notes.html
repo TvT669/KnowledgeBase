@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>知识笔记 | 本地 AI 知识库</title>
-    <link rel="stylesheet" href="/static/style.css" />
+    <link rel="stylesheet" href="/static/style.css?v={{ asset_version }}" />
   </head>
   <body>
     <main class="page page-wide">
@@ -12,7 +12,7 @@
         <div>
         
           <h1>笔记库</h1>
-          <p>这里展示的是已经整理完成的笔记。你可以按关键词搜索，也可以回看每篇笔记的来源对话。</p>
+          <p>这里展示的是已经沉淀下来的笔记，包含草稿、已复核和已发布内容。你可以按关键词搜索，也可以回看每篇笔记的来源对话。</p>
         </div>
         <div class="hero-actions">
           <a class="ghost-button" href="/">返回整理工作台</a>
@@ -22,18 +22,31 @@
       <section class="workspace-panel">
         <header class="panel-header">
           <div>
-            <p class="eyebrow">笔记检索</p>
-            <h2>按关键词找回问题、根因和方案</h2>
-            <p class="panel-text">搜索会同时匹配标题、问题描述、根本原因、解决方案和关键收获。</p>
+            <p class="eyebrow">统一搜索</p>
+            <h2>同屏找回笔记结论和原始会话</h2>
+            <p class="panel-text">一个关键词同时搜索已沉淀笔记和原始对话，先看结论，再决定要不要回到完整会话。</p>
           </div>
           <div id="noteCount" class="panel-badge">{{ notes | length }} 篇笔记</div>
         </header>
 
         <div class="search-row note-search-row">
-          <input id="noteSearchInput" placeholder="搜索笔记关键词，例如：幂等、重试、补偿" />
-          <button id="noteSearchBtn" type="button">搜索笔记</button>
+          <input id="noteSearchInput" placeholder="统一搜索关键词，例如：幂等、重试、补偿" />
+          <button id="noteSearchBtn" type="button">统一搜索</button>
           <button id="noteResetBtn" class="ghost-button" type="button">重置</button>
         </div>
+
+        <section id="noteBatchExportBar" class="compact-panel batch-action-bar" hidden>
+          <header class="compact-header compact-header-tight">
+            <div>
+              <p class="eyebrow">批量导出</p>
+              <h3 id="noteBatchSelectionTitle">已选中 0 篇笔记</h3>
+            </div>
+            <button id="clearNoteSelectionBtn" class="ghost-button" type="button">清空选择</button>
+          </header>
+          <div class="inline-actions">
+            <button id="batchExportNotesBtn" type="button">批量导出 Markdown</button>
+          </div>
+        </section>
 
         <div class="stack-filter-bar">
           <div>
@@ -45,11 +58,32 @@
 
         <div class="stack-filter-bar">
           <div>
+            <p class="eyebrow">业务标签</p>
+            <p class="panel-text">保留你在整理时确认下来的标签，方便按主题回看沉淀结果。</p>
+          </div>
+          <div id="noteTagFilterList" class="tag-filter-list" aria-live="polite"></div>
+        </div>
+
+        <div class="stack-filter-bar">
+          <div>
             <p class="eyebrow">笔记状态</p>
             <p class="panel-text">先区分草稿、已复核和已发布，再决定今天优先完善哪一批内容。</p>
           </div>
           <div id="statusFilterList" class="tag-filter-list" aria-live="polite"></div>
         </div>
+
+        <section id="sessionSearchSection" class="workspace-panel session-search-panel" hidden>
+          <header class="compact-header">
+            <div>
+              <p class="eyebrow">原始会话命中</p>
+              <h3>可能相关的原始讨论</h3>
+              <p class="panel-text">这些结果来自原始消息命中，适合先快速判断，再决定是否回看完整上下文。</p>
+            </div>
+            <div id="sessionResultCount" class="panel-badge">0 组会话</div>
+          </header>
+
+          <div id="sessionSearchResults" class="session-hit-list"></div>
+        </section>
 
         <div id="noteResults" class="note-grid note-grid-notes"></div>
       </section>
@@ -67,6 +101,37 @@
           <button id="closeEditBtn" class="icon-button ghost-button" type="button" aria-label="关闭">关闭</button>
         </header>
 
+        <section id="editAppendSummaryCard" class="session-recommendation" hidden>
+          <div class="compact-inline-head compact-inline-head-narrow">
+            <div>
+              <p class="eyebrow">本次并入摘要</p>
+              <h3 id="editAppendSummaryTitle">刚刚追加进来的变化</h3>
+            </div>
+          </div>
+          <p id="editAppendSummaryText" class="panel-text">这里会提示这次追加带来的主要变化。</p>
+          <div id="editAppendSummaryMeta" class="note-tag-row"></div>
+          <div id="editAppendSummarySections" class="append-summary-sections"></div>
+        </section>
+
+        <section id="editAppendTimelineCard" class="session-recommendation" hidden>
+          <div class="compact-inline-head compact-inline-head-narrow">
+            <div>
+              <p class="eyebrow">追加时间线</p>
+              <h3 id="editAppendTimelineTitle">这篇笔记最近并入过哪些内容</h3>
+            </div>
+          </div>
+          <section id="editAppendTimelineOverview" class="append-overview-card">
+            <div id="editAppendTimelineOverviewGrid" class="append-overview-grid"></div>
+            <p id="editAppendTimelineOverviewHint" class="panel-text"></p>
+          </section>
+          <div class="search-row search-row-compact append-timeline-search">
+            <input id="editAppendTimelineSearchInput" placeholder="搜索这篇笔记的追加历史，例如：补偿、幂等、回放" />
+            <button id="editAppendTimelineSearchResetBtn" class="ghost-button" type="button">清空</button>
+          </div>
+          <div id="editAppendTimelineFilters" class="tag-filter-list append-timeline-filters"></div>
+          <div id="editAppendTimelineList" class="append-timeline-list"></div>
+        </section>
+
         <form id="editNoteForm" class="note-form note-form-standalone">
           <label class="field">
             <span>标题</span>
@@ -76,10 +141,15 @@
           <label class="field">
             <span>状态</span>
             <select id="editStatus" name="status">
-              <option value="draft">draft</option>
-              <option value="reviewed">reviewed</option>
-              <option value="published">published</option>
+              <option value="draft">草稿</option>
+              <option value="reviewed">已复核</option>
+              <option value="published">已发布</option>
             </select>
+          </label>
+
+          <label class="field">
+            <span>业务标签</span>
+            <input id="editTags" name="tags" placeholder="用逗号分隔，例如：幂等, 重试, 补偿" />
           </label>
 
           <label class="field">
@@ -104,6 +174,7 @@
 
           <div class="form-actions">
             <button id="deleteEditBtn" class="danger-button" type="button">删除笔记</button>
+            <button id="exportEditBtn" class="ghost-button" type="button">导出 Markdown</button>
             <button id="saveEditBtn" type="submit">保存修改</button>
           </div>
 
@@ -130,675 +201,54 @@
       </section>
     </section>
 
-    <script>
-      const initialNotes = {{ notes | tojson }};
-      const queryParams = new URLSearchParams(window.location.search);
-      const requestedNoteId = Number(queryParams.get('note_id') || 0);
-      const noteStore = new Map(initialNotes.map((note) => [note.id, note]));
-      const noteResultsEl = document.getElementById('noteResults');
-      const noteSearchInput = document.getElementById('noteSearchInput');
-      const noteCount = document.getElementById('noteCount');
-      const stackFilterList = document.getElementById('stackFilterList');
-      const statusFilterList = document.getElementById('statusFilterList');
-      const editShell = document.getElementById('editShell');
-      const editModalTitle = document.getElementById('editModalTitle');
-      const editNoteForm = document.getElementById('editNoteForm');
-      const editTitle = document.getElementById('editTitle');
-      const editStatus = document.getElementById('editStatus');
-      const editProblem = document.getElementById('editProblem');
-      const editRootCause = document.getElementById('editRootCause');
-      const editSolution = document.getElementById('editSolution');
-      const editTakeaways = document.getElementById('editTakeaways');
-      const editNotice = document.getElementById('editNotice');
-      const deleteEditBtn = document.getElementById('deleteEditBtn');
-      const saveEditBtn = document.getElementById('saveEditBtn');
-      const sourceShell = document.getElementById('sourceShell');
-      const sourceModalTitle = document.getElementById('sourceModalTitle');
-      const sourceModalHint = document.getElementById('sourceModalHint');
-      const sourceModalList = document.getElementById('sourceModalList');
-      const NOTES_PREFS_KEY = 'knowledgebase.notes.filters';
-      const EDIT_DRAFT_KEY_PREFIX = 'knowledgebase.notes.editDraft.';
-
-      let currentNotes = [...initialNotes];
-      let activeEditNoteId = null;
-      let activeStackFilter = 'all';
-      let activeStatusFilter = 'all';
-
-      function normalizeStackFilter(value) {
-        return typeof value === 'string' && value.trim() ? value.trim() : 'all';
-      }
-
-      function normalizeStatusFilter(value) {
-        return ['all', 'draft', 'reviewed', 'published'].includes(value) ? value : 'all';
-      }
-
-      function loadNotesPreferences() {
-        try {
-          const raw = window.localStorage.getItem(NOTES_PREFS_KEY);
-          if (!raw) {
-            return;
-          }
-
-          const prefs = JSON.parse(raw);
-          noteSearchInput.value = typeof prefs?.search === 'string' ? prefs.search : '';
-          activeStackFilter = normalizeStackFilter(prefs?.stackFilter);
-          activeStatusFilter = normalizeStatusFilter(String(prefs?.statusFilter || 'all'));
-        } catch (error) {
-          noteSearchInput.value = '';
-          activeStackFilter = 'all';
-          activeStatusFilter = 'all';
-        }
-      }
-
-      function persistNotesPreferences() {
-        try {
-          window.localStorage.setItem(
-            NOTES_PREFS_KEY,
-            JSON.stringify({
-              search: noteSearchInput.value,
-              stackFilter: normalizeStackFilter(activeStackFilter),
-              statusFilter: normalizeStatusFilter(activeStatusFilter)
-            })
-          );
-        } catch (error) {
-          // Ignore storage failures in private mode or restrictive environments.
-        }
-      }
-
-      function editDraftKey(noteId) {
-        return `${EDIT_DRAFT_KEY_PREFIX}${noteId}`;
-      }
-
-      function getEditFormData() {
-        return {
-          title: editTitle.value,
-          status: editStatus.value,
-          problem: editProblem.value,
-          root_cause: editRootCause.value,
-          solution: editSolution.value,
-          key_takeaways: editTakeaways.value
-        };
-      }
-
-      function hasEditChanges(noteId = activeEditNoteId, fields = getEditFormData()) {
-        if (!noteId) {
-          return false;
-        }
-
-        const note = noteStore.get(noteId);
-        if (!note) {
-          return Object.values(fields).some((value) => String(value || '').trim());
-        }
-
-        return (
-          String(fields.title || '').trim() !== String(note.title || '').trim() ||
-          String(fields.status || '') !== String(note.status || '') ||
-          String(fields.problem || '').trim() !== String(note.problem || '').trim() ||
-          String(fields.root_cause || '').trim() !== String(note.root_cause || '').trim() ||
-          String(fields.solution || '').trim() !== String(note.solution || '').trim() ||
-          String(fields.key_takeaways || '').trim() !== String(note.key_takeaways || '').trim()
-        );
-      }
-
-      function loadEditDraft(noteId) {
-        try {
-          const raw = window.localStorage.getItem(editDraftKey(noteId));
-          if (!raw) {
-            return null;
-          }
-
-          const draft = JSON.parse(raw);
-          if (!draft || !hasEditChanges(noteId, draft.fields || {})) {
-            return null;
-          }
-          return draft.fields;
-        } catch (error) {
-          return null;
-        }
-      }
-
-      function persistEditDraft() {
-        if (!activeEditNoteId) {
-          return;
-        }
-
-        const fields = getEditFormData();
-        try {
-          if (!hasEditChanges(activeEditNoteId, fields)) {
-            window.localStorage.removeItem(editDraftKey(activeEditNoteId));
-            return;
-          }
-
-          window.localStorage.setItem(
-            editDraftKey(activeEditNoteId),
-            JSON.stringify({
-              note_id: activeEditNoteId,
-              fields
-            })
-          );
-        } catch (error) {
-          // Ignore storage failures in private mode or restrictive environments.
-        }
-      }
-
-      function clearEditDraft(noteId) {
-        if (!noteId) {
-          return;
-        }
-        try {
-          window.localStorage.removeItem(editDraftKey(noteId));
-        } catch (error) {
-          // Ignore storage failures in private mode or restrictive environments.
-        }
-      }
-
-      function shouldWarnBeforeClosingEdit() {
-        return !editShell.hidden && hasEditChanges();
-      }
-
-      function requestCloseEditModal() {
-        if (
-          shouldWarnBeforeClosingEdit() &&
-          !window.confirm('当前笔记有未保存修改，关闭后仍可稍后恢复本地草稿。确定关闭吗？')
-        ) {
-          return;
-        }
-        closeEditModal();
-      }
-
-      function escapeHtml(value) {
-        return String(value || '')
-          .replaceAll('&', '&amp;')
-          .replaceAll('<', '&lt;')
-          .replaceAll('>', '&gt;')
-          .replaceAll('"', '&quot;')
-          .replaceAll("'", '&#39;');
-      }
-
-      function escapeRegExp(value) {
-        return String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      }
-
-      function highlightText(value, keyword) {
-        const text = String(value || '');
-        const query = String(keyword || '').trim();
-        if (!query) {
-          return escapeHtml(text);
-        }
-
-        const regex = new RegExp(escapeRegExp(query), 'ig');
-        let lastIndex = 0;
-        let result = '';
-
-        for (const match of text.matchAll(regex)) {
-          const start = match.index ?? 0;
-          const matched = match[0] || '';
-          result += escapeHtml(text.slice(lastIndex, start));
-          result += `<mark class="search-hit">${escapeHtml(matched)}</mark>`;
-          lastIndex = start + matched.length;
-        }
-
-        result += escapeHtml(text.slice(lastIndex));
-        return result;
-      }
-
-      function availableStackTags(notes) {
-        const tags = new Set();
-        for (const note of notes) {
-          for (const tag of note.stack_tags || []) {
-            if (tag) {
-              tags.add(tag);
-            }
-          }
-        }
-        if (activeStackFilter !== 'all') {
-          tags.add(activeStackFilter);
-        }
-        return [...tags].sort((left, right) => left.localeCompare(right, 'zh-CN'));
-      }
-
-      function filterNotesByStack(notes) {
-        if (activeStackFilter === 'all') {
-          return notes;
-        }
-        return notes.filter((note) => (note.stack_tags || []).includes(activeStackFilter));
-      }
-
-      function filterNotesByStatus(notes) {
-        if (activeStatusFilter === 'all') {
-          return notes;
-        }
-        return notes.filter((note) => String(note.status || '') === activeStatusFilter);
-      }
-
-      function renderStackFilters(notes) {
-        const items = ['all', ...availableStackTags(notes)];
-        stackFilterList.innerHTML = items.map((tag) => {
-          const isActive = tag === activeStackFilter;
-          const label = tag === 'all' ? '全部' : tag;
-          return `
-            <button
-              type="button"
-              class="tag-filter-btn${isActive ? ' is-active' : ''}"
-              data-stack-filter="${escapeHtml(tag)}"
-            >
-              ${escapeHtml(label)}
-            </button>
-          `;
-        }).join('');
-      }
-
-      function renderStatusFilters(notes) {
-        const items = [
-          ['all', '全部'],
-          ['draft', 'draft'],
-          ['reviewed', 'reviewed'],
-          ['published', 'published']
-        ];
-        statusFilterList.innerHTML = items.map(([status, label]) => {
-          const count = status === 'all'
-            ? notes.length
-            : notes.filter((note) => String(note.status || '') === status).length;
-          const isActive = status === activeStatusFilter;
-          return `
-            <button
-              type="button"
-              class="tag-filter-btn${isActive ? ' is-active' : ''}"
-              data-status-filter="${escapeHtml(status)}"
-            >
-              ${escapeHtml(label)} · ${count}
-            </button>
-          `;
-        }).join('');
-      }
-
-      function renderNoteCard(note) {
-        const searchQuery = noteSearchInput.value.trim();
-        const sourceLabels = (note.source_labels || []).join(' / ') || '未标记来源';
-        const stackTags = (note.stack_tags || [])
-          .map((tag) => `<span class="mini-tag stack-tag">${escapeHtml(tag)}</span>`)
-          .join('');
-        return `
-          <article class="note-card">
-            <header class="note-card-header">
-              <div>
-                <h2>${highlightText(note.title, searchQuery)}</h2>
-                <div class="inline-meta">
-                  <span>创建于 ${escapeHtml(note.created_at)}</span>
-                  <span>更新于 ${escapeHtml(note.updated_at)}</span>
-                  <span>${escapeHtml(note.source_count)} 条来源</span>
-                  <span>${escapeHtml(sourceLabels)}</span>
-                </div>
-                ${stackTags ? `<div class="stack-tag-row">${stackTags}</div>` : ''}
-              </div>
-              <span class="pill">${escapeHtml(note.status)}</span>
-            </header>
-
-            <section class="note-section">
-              <h3>问题描述</h3>
-              <p>${highlightText(note.problem, searchQuery)}</p>
-            </section>
-
-            <section class="note-section">
-              <h3>根本原因</h3>
-              <p>${highlightText(note.root_cause, searchQuery)}</p>
-            </section>
-
-            <section class="note-section">
-              <h3>解决方案</h3>
-              <p>${highlightText(note.solution, searchQuery)}</p>
-            </section>
-
-            <section class="note-section">
-              <h3>关键收获</h3>
-              <p>${highlightText(note.key_takeaways, searchQuery)}</p>
-            </section>
-
-            <footer class="browser-foot note-card-foot">
-              <span>${escapeHtml(note.source_type || 'mixed')}</span>
-              <div class="inline-actions">
-                <button type="button" class="ghost-button open-edit-note" data-note-id="${note.id}">
-                  编辑笔记
-                </button>
-                <button type="button" class="danger-button open-delete-note" data-note-id="${note.id}">
-                  删除笔记
-                </button>
-                <button type="button" class="ghost-button open-note-sources" data-note-id="${note.id}" data-note-title="${escapeHtml(note.title)}">
-                  查看来源对话
-                </button>
-              </div>
-            </footer>
-          </article>
-        `;
-      }
-
-      function renderNotes(notes) {
-        renderStackFilters(notes);
-        renderStatusFilters(notes);
-        const visibleNotes = filterNotesByStatus(filterNotesByStack(notes));
-        persistNotesPreferences();
-        const activeLabels = [];
-        if (activeStatusFilter !== 'all') {
-          activeLabels.push(activeStatusFilter);
-        }
-        if (activeStackFilter !== 'all') {
-          activeLabels.push(activeStackFilter);
-        }
-        noteCount.textContent = activeLabels.length
-          ? `${visibleNotes.length} 篇 · ${activeLabels.join(' / ')}`
-          : `${visibleNotes.length} 篇笔记`;
-        if (!visibleNotes.length) {
-          const filterHints = [];
-          if (activeStatusFilter !== 'all') {
-            filterHints.push(activeStatusFilter);
-          }
-          if (activeStackFilter !== 'all') {
-            filterHints.push(activeStackFilter);
-          }
-          noteResultsEl.innerHTML = `
-            <section class="empty-state">
-              <h2>没有找到匹配笔记</h2>
-              <p>${filterHints.length
-                ? `当前筛选为 ${escapeHtml(filterHints.join(' / '))}，可以切换到“全部”或换个关键词。`
-                : '换一个关键词试试，或者点击“重置”查看全部笔记。'}</p>
-            </section>
-          `;
-          return;
-        }
-
-        noteResultsEl.innerHTML = visibleNotes.map(renderNoteCard).join('');
-      }
-
-      function openSourcesModal(title) {
-        sourceModalTitle.textContent = title || '查看来源消息';
-        sourceModalHint.textContent = '这里展示这篇笔记关联的原始消息。';
-        sourceModalList.innerHTML = '<p class="source-empty">正在加载来源消息...</p>';
-        sourceShell.hidden = false;
-        document.body.classList.add('composer-open');
-      }
-
-      function closeSourcesModal() {
-        sourceShell.hidden = true;
-        document.body.classList.remove('composer-open');
-      }
-
-      function setEditNotice(message, type = '') {
-        editNotice.textContent = message;
-        editNotice.className = type ? `notice ${type}` : 'notice';
-      }
-
-      function openEditModal(noteId) {
-        const note = noteStore.get(noteId);
-        if (!note) return;
-
-        activeEditNoteId = noteId;
-        editModalTitle.textContent = `编辑：${note.title}`;
-        const restoredDraft = loadEditDraft(noteId);
-        if (restoredDraft) {
-          editTitle.value = restoredDraft.title || '';
-          editStatus.value = restoredDraft.status || 'draft';
-          editProblem.value = restoredDraft.problem || '';
-          editRootCause.value = restoredDraft.root_cause || '';
-          editSolution.value = restoredDraft.solution || '';
-          editTakeaways.value = restoredDraft.key_takeaways || '';
-          setEditNotice('已恢复本地未保存修改。', 'success');
-        } else {
-          editTitle.value = note.title || '';
-          editStatus.value = note.status || 'draft';
-          editProblem.value = note.problem || '';
-          editRootCause.value = note.root_cause || '';
-          editSolution.value = note.solution || '';
-          editTakeaways.value = note.key_takeaways || '';
-          setEditNotice('');
-        }
-        editShell.hidden = false;
-        document.body.classList.add('composer-open');
-      }
-
-      function openRequestedNoteIfNeeded() {
-        if (!requestedNoteId || !noteStore.has(requestedNoteId)) {
-          return;
-        }
-
-        openEditModal(requestedNoteId);
-        const note = noteStore.get(requestedNoteId);
-        if (note?.status === 'draft' && !editNotice.textContent) {
-          setEditNotice('这是刚存下来的草稿，先把标题和关键收获修顺就够了。');
-        }
-      }
-
-      function closeEditModal() {
-        activeEditNoteId = null;
-        editNoteForm.reset();
-        setEditNotice('');
-        editShell.hidden = true;
-        document.body.classList.remove('composer-open');
-      }
-
-      function upsertNote(note) {
-        noteStore.set(note.id, note);
-        const initialIndex = initialNotes.findIndex((item) => item.id === note.id);
-        if (initialIndex !== -1) {
-          initialNotes.splice(initialIndex, 1, note);
-        }
-
-        const currentIndex = currentNotes.findIndex((item) => item.id === note.id);
-        if (currentIndex !== -1) {
-          currentNotes.splice(currentIndex, 1, note);
-        }
-      }
-
-      function removeNoteLocally(noteId) {
-        noteStore.delete(noteId);
-
-        const initialIndex = initialNotes.findIndex((item) => item.id === noteId);
-        if (initialIndex !== -1) {
-          initialNotes.splice(initialIndex, 1);
-        }
-
-        const currentIndex = currentNotes.findIndex((item) => item.id === noteId);
-        if (currentIndex !== -1) {
-          currentNotes.splice(currentIndex, 1);
-        }
-      }
-
-      async function searchNotes() {
-        const q = noteSearchInput.value.trim();
-        if (!q) {
-          currentNotes = [...initialNotes];
-          renderNotes(currentNotes);
-          return;
-        }
-
-        const resp = await fetch('/api/notes/search', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ q, limit: 50 })
-        });
-        const data = await resp.json();
-        currentNotes = data.items || [];
-        renderNotes(currentNotes);
-      }
-
-      async function loadSources(noteId, title) {
-        openSourcesModal(title);
-
-        try {
-          const resp = await fetch(`/api/notes/${noteId}/sources`);
-          if (!resp.ok) {
-            throw new Error(`加载失败: ${resp.status}`);
-          }
-
-          const data = await resp.json();
-          const items = data.items || [];
-          sourceModalHint.textContent = `共关联 ${items.length} 条原始消息。`;
-
-          if (!items.length) {
-            sourceModalList.innerHTML = '<p class="source-empty">这篇笔记暂时没有关联到来源消息。</p>';
-            return;
-          }
-
-          sourceModalList.innerHTML = items.map((item) => `
-            <article class="source-item source-item-large">
-              <header>
-                <div class="inline-meta inline-meta-tight">
-                  <span class="source-badge">${escapeHtml(item.role)}</span>
-                  <span>${escapeHtml(item.source)}${item.session_id ? ` / ${escapeHtml(item.session_id)}` : ''}</span>
-                </div>
-                <span>${escapeHtml(item.created_at)}</span>
-              </header>
-              <p>${escapeHtml(item.content)}</p>
-            </article>
-          `).join('');
-        } catch (error) {
-          sourceModalHint.textContent = error.message || '加载来源消息失败，请稍后再试。';
-          sourceModalList.innerHTML = '<p class="source-empty">未能加载来源消息。</p>';
-        }
-      }
-
-      async function saveNoteEdit(event) {
-        event.preventDefault();
-        if (!activeEditNoteId) return;
-
-        saveEditBtn.disabled = true;
-        setEditNotice('正在保存修改...');
-
-        try {
-          const resp = await fetch(`/api/notes/${activeEditNoteId}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              title: editTitle.value.trim(),
-              problem: editProblem.value.trim(),
-              root_cause: editRootCause.value.trim(),
-              solution: editSolution.value.trim(),
-              key_takeaways: editTakeaways.value.trim(),
-              status: editStatus.value,
-              source_type: noteStore.get(activeEditNoteId)?.source_type || 'mixed'
-            })
-          });
-
-          if (!resp.ok) {
-            throw new Error(`保存失败: ${resp.status}`);
-          }
-
-          const data = await resp.json();
-          clearEditDraft(activeEditNoteId);
-          upsertNote(data.note);
-          renderNotes(currentNotes);
-          setEditNotice('修改已保存。', 'success');
-          window.setTimeout(closeEditModal, 350);
-        } catch (error) {
-          setEditNotice(error.message || '保存修改失败，请稍后再试。', 'error');
-        } finally {
-          saveEditBtn.disabled = false;
-        }
-      }
-
-      async function deleteNote(noteId) {
-        const note = noteStore.get(noteId);
-        if (!note) return;
-
-        const confirmed = window.confirm(`确定删除笔记《${note.title}》吗？此操作不可撤销。`);
-        if (!confirmed) return;
-
-        try {
-          const resp = await fetch(`/api/notes/${noteId}`, {
-            method: 'DELETE'
-          });
-          if (!resp.ok) {
-            throw new Error(`删除失败: ${resp.status}`);
-          }
-
-          clearEditDraft(noteId);
-          removeNoteLocally(noteId);
-          renderNotes(currentNotes);
-          if (activeEditNoteId === noteId) {
-            closeEditModal();
-          }
-        } catch (error) {
-          if (activeEditNoteId === noteId) {
-            setEditNotice(error.message || '删除失败，请稍后再试。', 'error');
-          } else {
-            window.alert(error.message || '删除失败，请稍后再试。');
-          }
-        }
-      }
-
-      document.getElementById('noteSearchBtn').addEventListener('click', searchNotes);
-      document.getElementById('noteResetBtn').addEventListener('click', () => {
-        noteSearchInput.value = '';
-        activeStackFilter = 'all';
-        activeStatusFilter = 'all';
-        currentNotes = [...initialNotes];
-        renderNotes(currentNotes);
-      });
-      noteSearchInput.addEventListener('keydown', (event) => {
-        if (event.key === 'Enter') {
-          searchNotes();
-        }
-      });
-
-      noteResultsEl.addEventListener('click', (event) => {
-        const editTrigger = event.target.closest('.open-edit-note');
-        if (editTrigger) {
-          openEditModal(Number(editTrigger.dataset.noteId));
-          return;
-        }
-
-        const deleteTrigger = event.target.closest('.open-delete-note');
-        if (deleteTrigger) {
-          deleteNote(Number(deleteTrigger.dataset.noteId));
-          return;
-        }
-
-        const trigger = event.target.closest('.open-note-sources');
-        if (!trigger) return;
-        loadSources(trigger.dataset.noteId, trigger.dataset.noteTitle);
-      });
-
-      stackFilterList.addEventListener('click', (event) => {
-        const trigger = event.target.closest('[data-stack-filter]');
-        if (!trigger) return;
-        activeStackFilter = trigger.dataset.stackFilter || 'all';
-        renderNotes(currentNotes);
-      });
-      statusFilterList.addEventListener('click', (event) => {
-        const trigger = event.target.closest('[data-status-filter]');
-        if (!trigger) return;
-        activeStatusFilter = normalizeStatusFilter(trigger.dataset.statusFilter || 'all');
-        renderNotes(currentNotes);
-      });
-
-      document.getElementById('closeEditBtn').addEventListener('click', requestCloseEditModal);
-      document.querySelector('[data-close-edit]').addEventListener('click', requestCloseEditModal);
-      editNoteForm.addEventListener('submit', saveNoteEdit);
-      editNoteForm.addEventListener('input', persistEditDraft);
-      editNoteForm.addEventListener('change', persistEditDraft);
-      deleteEditBtn.addEventListener('click', () => {
-        if (!activeEditNoteId) return;
-        deleteNote(activeEditNoteId);
-      });
-      document.getElementById('closeSourcesBtn').addEventListener('click', closeSourcesModal);
-      document.querySelector('[data-close-sources]').addEventListener('click', closeSourcesModal);
-
-      loadNotesPreferences();
-      if (noteSearchInput.value.trim()) {
-        searchNotes().catch(() => {
-          currentNotes = [...initialNotes];
-          renderNotes(currentNotes);
-        });
-      } else {
-        renderNotes(currentNotes);
-      }
-      openRequestedNoteIfNeeded();
-      window.addEventListener('beforeunload', (event) => {
-        if (!shouldWarnBeforeClosingEdit()) {
-          return;
-        }
-        event.preventDefault();
-        event.returnValue = '';
-      });
+    <section id="sessionShell" class="composer-shell" hidden>
+      <div class="composer-backdrop" data-close-sessions></div>
+      <section class="composer-panel source-modal" aria-label="原始会话记录">
+        <header class="composer-header">
+          <div>
+            <p class="eyebrow">原始会话</p>
+            <h2 id="sessionModalTitle">查看完整会话</h2>
+            <p id="sessionModalHint" class="panel-text">这里展示搜索命中的完整原始会话。</p>
+          </div>
+          <button id="closeSessionsBtn" class="icon-button ghost-button" type="button" aria-label="关闭">关闭</button>
+        </header>
+
+        <div id="sessionModalList" class="transcript-list">
+          <p class="source-empty">正在加载完整会话...</p>
+        </div>
+      </section>
+    </section>
+
+    <section id="appendPreviewShell" class="composer-shell" hidden>
+      <div class="composer-backdrop" data-close-append-preview></div>
+      <section class="composer-panel source-modal" aria-label="追加差异预览">
+        <header class="composer-header">
+          <div>
+            <p class="eyebrow">追加预览</p>
+            <h2 id="appendPreviewTitle">确认这次要追加到哪篇笔记</h2>
+            <p id="appendPreviewHint" class="panel-text">先看清楚会新增哪些内容，再决定是否直接并入已有笔记。</p>
+          </div>
+          <button id="closeAppendPreviewBtn" class="icon-button ghost-button" type="button" aria-label="关闭">关闭</button>
+        </header>
+
+        <div id="appendPreviewSummary" class="session-recommendation append-preview-summary">
+          <p class="source-empty">正在准备追加预览...</p>
+        </div>
+
+        <div id="appendPreviewSections" class="append-preview-sections">
+          <p class="source-empty">正在生成差异内容...</p>
+        </div>
+
+        <div class="form-actions append-preview-actions">
+          <button id="confirmAppendPreviewBtn" type="button">确认追加到这篇</button>
+        </div>
+        <p id="appendPreviewNotice" class="notice" aria-live="polite"></p>
+      </section>
+    </section>
+
+    <script id="notesPageBootstrap" type="application/json">
+      {{ {"notes": notes} | tojson }}
     </script>
+    <script src="/static/notes.js?v={{ asset_version }}"></script>
   </body>
 </html>

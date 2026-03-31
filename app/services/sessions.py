@@ -342,7 +342,7 @@ def _cache_session_insight(conn: Any, session: dict[str, Any], insight: dict[str
 
 
 def latest_sessions(limit: int = 12) -> list[dict[str, Any]]:
-    candidate_limit = max(limit * 3, limit)
+    candidate_limit = max(limit * 5, limit)
     with get_conn() as conn:
         rows = conn.execute(
             """

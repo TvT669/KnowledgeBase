@@ -77,6 +77,18 @@ def ensure_db() -> None:
         )
         conn.execute(
             """
+            CREATE INDEX IF NOT EXISTS messages_source_session_latest_idx
+            ON messages(source, session_id, id DESC)
+            """
+        )
+        conn.execute(
+            """
+            CREATE INDEX IF NOT EXISTS messages_session_latest_idx
+            ON messages(session_id, id DESC)
+            """
+        )
+        conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS notes (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 title TEXT NOT NULL,
@@ -101,6 +113,131 @@ def ensure_db() -> None:
                 FOREIGN KEY (note_id) REFERENCES notes(id) ON DELETE CASCADE,
                 FOREIGN KEY (message_id) REFERENCES messages(id) ON DELETE CASCADE
             )
+            """
+        )
+        conn.execute(
+            """
+            CREATE INDEX IF NOT EXISTS note_sources_note_sort_idx
+            ON note_sources(note_id, sort_order)
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS note_tags (
+                note_id INTEGER NOT NULL,
+                tag TEXT NOT NULL,
+                sort_order INTEGER NOT NULL DEFAULT 0,
+                PRIMARY KEY (note_id, tag),
+                FOREIGN KEY (note_id) REFERENCES notes(id) ON DELETE CASCADE
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE INDEX IF NOT EXISTS note_tags_tag_note_idx
+            ON note_tags(tag, note_id)
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS note_append_events (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                note_id INTEGER NOT NULL,
+                source TEXT,
+                session_id TEXT,
+                origin_label TEXT NOT NULL,
+                source_count_added INTEGER NOT NULL DEFAULT 0,
+                summary_text TEXT NOT NULL DEFAULT '',
+                changed_sections_json TEXT NOT NULL DEFAULT '[]',
+                added_tags_json TEXT NOT NULL DEFAULT '[]',
+                section_updates_json TEXT NOT NULL DEFAULT '[]',
+                added_message_ids_json TEXT NOT NULL DEFAULT '[]',
+                previous_tags_json TEXT NOT NULL DEFAULT '[]',
+                previous_status TEXT NOT NULL DEFAULT 'draft',
+                previous_source_type TEXT NOT NULL DEFAULT 'manual',
+                created_at TEXT NOT NULL DEFAULT (datetime('now')),
+                FOREIGN KEY (note_id) REFERENCES notes(id) ON DELETE CASCADE
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE INDEX IF NOT EXISTS note_append_events_note_created_idx
+            ON note_append_events(note_id, created_at DESC, id DESC)
+            """
+        )
+        note_append_events_columns = {
+            str(row["name"])
+            for row in conn.execute("PRAGMA table_info(note_append_events)").fetchall()
+        }
+        if "section_updates_json" not in note_append_events_columns:
+            conn.execute(
+                """
+                ALTER TABLE note_append_events
+                ADD COLUMN section_updates_json TEXT NOT NULL DEFAULT '[]'
+                """
+            )
+        if "added_message_ids_json" not in note_append_events_columns:
+            conn.execute(
+                """
+                ALTER TABLE note_append_events
+                ADD COLUMN added_message_ids_json TEXT NOT NULL DEFAULT '[]'
+                """
+            )
+        if "previous_tags_json" not in note_append_events_columns:
+            conn.execute(
+                """
+                ALTER TABLE note_append_events
+                ADD COLUMN previous_tags_json TEXT NOT NULL DEFAULT '[]'
+                """
+            )
+        if "previous_status" not in note_append_events_columns:
+            conn.execute(
+                """
+                ALTER TABLE note_append_events
+                ADD COLUMN previous_status TEXT NOT NULL DEFAULT 'draft'
+                """
+            )
+        if "previous_source_type" not in note_append_events_columns:
+            conn.execute(
+                """
+                ALTER TABLE note_append_events
+                ADD COLUMN previous_source_type TEXT NOT NULL DEFAULT 'manual'
+                """
+            )
+        for column in (
+            "changed_sections_json",
+            "added_tags_json",
+            "section_updates_json",
+            "added_message_ids_json",
+            "previous_tags_json",
+        ):
+            conn.execute(
+                f"""
+                UPDATE note_append_events
+                SET {column} = '[]'
+                WHERE {column} IS NULL OR TRIM({column}) = ''
+                """
+            )
+        conn.execute(
+            """
+            UPDATE note_append_events
+            SET summary_text = ''
+            WHERE summary_text IS NULL
+            """
+        )
+        conn.execute(
+            """
+            UPDATE note_append_events
+            SET previous_status = 'draft'
+            WHERE previous_status IS NULL OR TRIM(previous_status) = ''
+            """
+        )
+        conn.execute(
+            """
+            UPDATE note_append_events
+            SET previous_source_type = 'manual'
+            WHERE previous_source_type IS NULL OR TRIM(previous_source_type) = ''
             """
         )
         conn.execute(
@@ -200,6 +337,38 @@ def ensure_db() -> None:
                 FOREIGN KEY (latest_message_id) REFERENCES messages(id) ON DELETE CASCADE,
                 FOREIGN KEY (note_id) REFERENCES notes(id) ON DELETE SET NULL
             )
+            """
+        )
+        conn.execute(
+            """
+            CREATE INDEX IF NOT EXISTS session_queue_status_last_seen_idx
+            ON session_queue(status, last_seen_at DESC)
+            """
+        )
+        conn.execute(
+            """
+            CREATE INDEX IF NOT EXISTS session_queue_updated_latest_idx
+            ON session_queue(updated_at DESC, latest_message_id DESC)
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS ide_sync_files (
+                source TEXT NOT NULL,
+                path TEXT NOT NULL,
+                session_id TEXT NOT NULL DEFAULT '',
+                file_size INTEGER NOT NULL DEFAULT 0,
+                modified_at INTEGER NOT NULL DEFAULT 0,
+                message_count INTEGER NOT NULL DEFAULT 0,
+                last_synced_at TEXT NOT NULL DEFAULT (datetime('now')),
+                PRIMARY KEY (source, path)
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE INDEX IF NOT EXISTS ide_sync_files_source_session_idx
+            ON ide_sync_files(source, session_id)
             """
         )
 

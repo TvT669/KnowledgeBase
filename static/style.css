@@ -219,6 +219,20 @@ textarea {
   margin-bottom: 1rem;
 }
 
+.sync-entry-panel {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.batch-action-bar {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.sync-source-bar {
+  margin-top: 0.2rem;
+}
+
 .side-panel {
   display: grid;
   gap: 1rem;
@@ -536,6 +550,12 @@ button:hover,
   box-shadow: var(--shadow-soft);
 }
 
+.browser-card.is-selected {
+  border-color: rgba(15, 118, 110, 0.34);
+  box-shadow: inset 0 0 0 1px rgba(15, 118, 110, 0.08);
+  background: rgba(240, 253, 250, 0.92);
+}
+
 .browser-card:hover {
   border-color: var(--line-strong);
 }
@@ -780,6 +800,235 @@ button:hover,
   grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
 }
 
+.note-card.is-selected {
+  border-color: rgba(15, 118, 110, 0.34);
+  box-shadow: inset 0 0 0 1px rgba(15, 118, 110, 0.08);
+  background: rgba(240, 253, 250, 0.92);
+}
+
+.session-search-panel {
+  margin-top: 1rem;
+  padding: 1rem;
+}
+
+.session-hit-list {
+  display: grid;
+  gap: 0.85rem;
+  margin-top: 0.95rem;
+}
+
+.session-hit-card {
+  padding: 0.95rem;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface-muted);
+}
+
+.session-hit-card h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.session-hit-snippets {
+  display: grid;
+  gap: 0.55rem;
+  margin-top: 0.75rem;
+}
+
+.session-recommendation {
+  margin-top: 0.85rem;
+  padding: 0.8rem;
+  border-radius: 12px;
+  border: 1px solid rgba(180, 83, 9, 0.16);
+  background: rgba(180, 83, 9, 0.05);
+}
+
+.append-preview-summary {
+  margin-top: 1rem;
+}
+
+#editAppendSummaryCard {
+  margin-top: 1rem;
+}
+
+#editAppendTimelineCard {
+  margin-top: 1rem;
+}
+
+.append-summary-sections {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 0.9rem;
+}
+
+.append-summary-block {
+  padding: 0.8rem;
+  border-radius: 12px;
+  border: 1px solid rgba(15, 118, 110, 0.16);
+  background: rgba(15, 118, 110, 0.06);
+}
+
+.append-summary-block h4 {
+  margin: 0 0 0.4rem;
+  font-size: 0.9rem;
+}
+
+.field-highlight span {
+  color: #0f766e;
+}
+
+.field-highlight input,
+.field-highlight textarea,
+.field-highlight select {
+  border-color: rgba(15, 118, 110, 0.45);
+  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.08);
+  background: rgba(240, 253, 250, 0.85);
+}
+
+.append-timeline-list {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 0.9rem;
+}
+
+.append-timeline-filters {
+  margin-top: 0.85rem;
+}
+
+.append-overview-card {
+  margin-top: 0.85rem;
+  padding: 0.9rem;
+  border: 1px solid rgba(15, 118, 110, 0.14);
+  border-radius: 14px;
+  background: rgba(15, 118, 110, 0.05);
+}
+
+.append-overview-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.7rem;
+}
+
+.append-overview-item {
+  padding: 0.75rem;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(202, 191, 174, 0.7);
+}
+
+.append-overview-item strong {
+  display: block;
+  margin-top: 0.24rem;
+  font-size: 1.02rem;
+  letter-spacing: -0.02em;
+}
+
+.append-timeline-search {
+  margin-top: 0.85rem;
+}
+
+.append-timeline-group {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.append-timeline-group-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: center;
+  padding-bottom: 0.2rem;
+  border-bottom: 1px dashed rgba(202, 191, 174, 0.9);
+}
+
+.append-timeline-group-head h4 {
+  margin: 0;
+  font-size: 0.92rem;
+}
+
+.append-timeline-item {
+  padding: 0.85rem;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.62);
+}
+
+.append-timeline-item.is-active {
+  border-color: rgba(15, 118, 110, 0.34);
+  background: rgba(240, 253, 250, 0.92);
+  box-shadow: inset 0 0 0 1px rgba(15, 118, 110, 0.08);
+}
+
+.append-timeline-item h4 {
+  margin: 0;
+  font-size: 0.94rem;
+}
+
+.append-timeline-details {
+  display: grid;
+  gap: 0.7rem;
+  margin-top: 0.85rem;
+}
+
+.append-timeline-detail {
+  padding: 0.75rem;
+  border-radius: 12px;
+  border: 1px solid rgba(15, 118, 110, 0.14);
+  background: rgba(15, 118, 110, 0.04);
+}
+
+.append-timeline-detail h5 {
+  margin: 0 0 0.35rem;
+  font-size: 0.86rem;
+}
+
+.append-preview-sections {
+  display: grid;
+  gap: 0.85rem;
+  margin-top: 1rem;
+}
+
+.append-preview-card {
+  padding: 0.95rem;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface-muted);
+}
+
+.append-preview-card h3 {
+  margin: 0;
+  font-size: 0.98rem;
+}
+
+.append-preview-body {
+  display: grid;
+  gap: 0.8rem;
+  margin-top: 0.8rem;
+}
+
+.append-preview-block {
+  padding: 0.75rem;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.62);
+  border: 1px solid rgba(202, 191, 174, 0.65);
+}
+
+.append-preview-block h4 {
+  margin: 0 0 0.35rem;
+  font-size: 0.88rem;
+}
+
+.append-preview-actions {
+  margin-top: 1rem;
+}
+
+.session-hit-snippet {
+  padding: 0.75rem;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.62);
+  border: 1px solid rgba(202, 191, 174, 0.65);
+}
+
 .note-card {
   border-radius: 18px;
   padding: 1rem;
@@ -803,10 +1052,24 @@ button:hover,
   margin-top: 0.75rem;
 }
 
+.note-tag-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-top: 0.75rem;
+}
+
 .stack-tag {
   background: rgba(15, 118, 110, 0.08);
   border-color: rgba(15, 118, 110, 0.18);
   color: var(--accent);
+  font-weight: 600;
+}
+
+.note-tag {
+  background: rgba(180, 83, 9, 0.08);
+  border-color: rgba(180, 83, 9, 0.18);
+  color: #9a4d11;
   font-weight: 600;
 }
 
@@ -892,6 +1155,35 @@ button:hover,
   gap: 0.75rem;
 }
 
+.recommendation-preview {
+  align-content: start;
+}
+
+.compact-inline-head-narrow {
+  align-items: center;
+}
+
+.recommendation-list {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.recommendation-card {
+  padding: 0.8rem;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+}
+
+.recommendation-card h4 {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.recommendation-meta {
+  margin-top: 0.45rem;
+}
+
 .source-item {
   padding: 0.8rem;
 }
@@ -942,6 +1234,13 @@ button:hover,
   color: var(--muted);
   font-size: 0.88rem;
   font-weight: 600;
+}
+
+.field-hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.6;
 }
 
 .form-actions {
@@ -1111,7 +1410,8 @@ pre {
   .browser-list,
   .focus-list,
   .inbox-card-list,
-  .note-grid {
+  .note-grid,
+  .append-overview-grid {
     grid-template-columns: 1fr;
   }
 

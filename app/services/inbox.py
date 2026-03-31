@@ -21,6 +21,15 @@ def _utc_now() -> str:
     return datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
 
 
+def _parse_utc_timestamp(value: Any) -> datetime | None:
+    if not value:
+        return None
+    try:
+        return datetime.strptime(str(value), "%Y-%m-%d %H:%M:%S")
+    except ValueError:
+        return None
+
+
 def _parse_tags(raw: Any) -> list[str]:
     if not raw:
         return []
@@ -31,6 +40,24 @@ def _parse_tags(raw: Any) -> list[str]:
     if not isinstance(parsed, list):
         return []
     return [str(item).strip() for item in parsed if str(item).strip()]
+
+
+def _merge_tags(*tag_groups: list[str]) -> list[str]:
+    merged: list[str] = []
+    seen: set[str] = set()
+    for group in tag_groups:
+        for tag in group:
+            cleaned = str(tag or "").strip()
+            if not cleaned:
+                continue
+            lowered = cleaned.casefold()
+            if lowered in seen:
+                continue
+            seen.add(lowered)
+            merged.append(cleaned[:40])
+            if len(merged) >= 12:
+                return merged
+    return merged
 
 
 def _priority_rank(label: str) -> int:
@@ -257,6 +284,50 @@ def _upsert_queue_row(
     )
 
 
+def get_inbox_refresh_state(max_age_seconds: int = 300) -> dict[str, Any]:
+    with get_conn() as conn:
+        queue_row = conn.execute(
+            """
+            SELECT
+                COUNT(*) AS queue_count,
+                MAX(updated_at) AS last_refreshed_at,
+                MAX(latest_message_id) AS latest_queued_message_id
+            FROM session_queue
+            """
+        ).fetchone()
+        messages_row = conn.execute(
+            """
+            SELECT MAX(id) AS latest_message_id
+            FROM messages
+            WHERE COALESCE(session_id, '') <> ''
+            """
+        ).fetchone()
+
+    queue_count = int(queue_row["queue_count"] or 0)
+    last_refreshed_at = str(queue_row["last_refreshed_at"] or "")
+    latest_queued_message_id = int(queue_row["latest_queued_message_id"] or 0)
+    latest_message_id = int(messages_row["latest_message_id"] or 0)
+    last_refreshed_dt = _parse_utc_timestamp(last_refreshed_at)
+    is_stale = False
+    if queue_count > 0:
+        if last_refreshed_dt is None:
+            is_stale = True
+        else:
+            is_stale = (datetime.utcnow() - last_refreshed_dt).total_seconds() >= max_age_seconds
+    has_new_messages = latest_message_id > latest_queued_message_id
+    needs_refresh = (queue_count == 0 and latest_message_id > 0) or has_new_messages or is_stale
+
+    return {
+        "queue_count": queue_count,
+        "last_refreshed_at": last_refreshed_at,
+        "latest_queued_message_id": latest_queued_message_id,
+        "latest_message_id": latest_message_id,
+        "has_new_messages": has_new_messages,
+        "is_stale": is_stale,
+        "needs_refresh": needs_refresh,
+    }
+
+
 def refresh_inbox(limit: int = 120) -> dict[str, int]:
     sessions = latest_sessions(limit=limit)
     now = _utc_now()
@@ -284,6 +355,27 @@ def refresh_inbox(limit: int = 120) -> dict[str, int]:
                 updated += 1
 
     return {"scanned": len(sessions), "inserted": inserted, "updated": updated}
+
+
+def refresh_inbox_if_needed(limit: int = 120, max_age_seconds: int = 300) -> dict[str, Any]:
+    state = get_inbox_refresh_state(max_age_seconds=max_age_seconds)
+    if not state["needs_refresh"]:
+        return {"refreshed": False, "reason": "fresh", "refresh": None, "state": state}
+
+    if state["queue_count"] == 0:
+        reason = "empty_queue"
+    elif state["has_new_messages"]:
+        reason = "new_messages"
+    else:
+        reason = "stale"
+
+    stats = refresh_inbox(limit=limit)
+    return {
+        "refreshed": True,
+        "reason": reason,
+        "refresh": stats,
+        "state": get_inbox_refresh_state(max_age_seconds=max_age_seconds),
+    }
 
 
 def _row_to_item(row: Any) -> dict[str, Any]:
@@ -462,6 +554,37 @@ def confirm_session_metadata(
                 title.strip() if title else None,
                 json.dumps(tags or [], ensure_ascii=False),
                 priority.strip() if priority else None,
+                source,
+                session_id,
+            ),
+        )
+    return get_inbox_item(source, session_id)
+
+
+def batch_confirm_session_metadata(
+    source: str,
+    session_id: str,
+    *,
+    tags: list[str] | None = None,
+    priority: str | None = None,
+) -> dict[str, Any]:
+    current = ensure_queue_entry(source, session_id)
+    merged_tags = _merge_tags(list(current.get("display_tags") or []), list(tags or []))
+    with get_conn() as conn:
+        conn.execute(
+            """
+            UPDATE session_queue
+            SET
+                user_tags_json = ?,
+                user_priority = ?,
+                status = 'ready',
+                last_reviewed_at = datetime('now'),
+                updated_at = datetime('now')
+            WHERE source = ? AND session_id = ?
+            """,
+            (
+                json.dumps(merged_tags, ensure_ascii=False),
+                priority.strip() if priority else current.get("display_priority"),
                 source,
                 session_id,
             ),
